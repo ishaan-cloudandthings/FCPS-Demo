@@ -356,35 +356,4 @@ in `.env.example`.
 
 ## 11. Architecture Decision Records
 
-### ADR-001 — EC2 + Docker Compose over Serverless
-
-**Decision:** Deploy on a single EC2 t3.medium running Docker Compose rather than
-Lambda + RDS.
-
-**Rationale:**
-- Oracle XE cannot run on Lambda. A container-based host is required.
-- Demo context favours simplicity — one instance, one compose file, one SSH deploy.
-- EC2 allows ID.me OAuth callback on a stable public URL without API Gateway complexity.
-
-**Production recommendation:** RDS Oracle SE2, ECS Fargate, S3 + CloudFront, ALB.
-
----
-
-### ADR-002 — Role Sourced from Oracle, Not ID.me
-
-**Decision:** The user's role (Admin or Staff) is read from the Oracle STAFF table after
-ID.me verification. ID.me is used for identity only.
-
-**Rationale:**
-- FCPS HR data lives in Oracle. Oracle is the authoritative source for role and clearance.
-- Embedding role in ID.me claims would require FCPS to manage claims — out of scope.
-- Separation of concerns: ID.me answers "who are you?", Oracle answers "what can you do?".
-
----
-
-### ADR-003 — JWT in httpOnly Cookie
-
-**Decision:** JWT stored in httpOnly, Secure, SameSite=Strict cookie.
-
-**Rationale:** Consistent with C&T security standard (see VMS v2 ADR-005). Prevents
-XSS-based token theft. localStorage explicitly avoided per OWASP guidance.
+All ADRs now live in [`docs/adr/`](./adr/). See the [ADR index](./adr/README.md).

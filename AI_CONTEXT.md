@@ -15,6 +15,7 @@
 | Build Type     | Greenfield demo build                                          |
 | GitHub Repo    | github.com/Cloud-and-Things/fcps-procurement-portal           |
 | Framework      | C&T AI-Driven SDLC Framework v1.0                             |
+| Jira Project   | AC                                                            |
 
 ---
 

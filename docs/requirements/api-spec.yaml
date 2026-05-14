@@ -1,0 +1,563 @@
+openapi: 3.1.0
+
+info:
+  title: FCPS Vendor Procurement Portal API
+  version: 0.1.0
+  summary: Internal vendor procurement portal for FCPS staff
+  description: |
+    Read-only API backing the FCPS Vendor Procurement Portal demo. Derived directly
+    from `docs/requirements/REQUIREMENTS.md` v0.1 and `docs/requirements/FUNCTIONAL_DESIGN.md`
+    v0.1.
+
+    Identity is established by ID.me OAuth 2.0 (authorisation code flow). The backend
+    performs the code exchange, validates the ID token, looks the user up in the Oracle
+    `STAFF` table, and issues a JWT in an `HttpOnly; SameSite=Lax` cookie named
+    `session`. All `/api/vendors/*` endpoints require this cookie. All access to
+    `BANK_DETAILS` is audit-logged in the `AUDIT_LOG` table.
+
+    Naming, layer order, and conventions follow `AI_CONTEXT.md`. RBAC follows the
+    role/level matrix in `REQUIREMENTS.md` §2.2.
+  contact:
+    name: Cloud & Things (C&T) — FCPS Procurement Portal team
+  license:
+    name: Proprietary
+  x-source-documents:
+    - docs/requirements/REQUIREMENTS.md
+    - docs/requirements/FUNCTIONAL_DESIGN.md
+  x-status: DRAFT
+
+servers:
+  - url: http://{ec2_public_ip}
+    description: Demo on AWS EC2 (HTTP for the demo; HTTPS is a phase-2 NFR)
+    variables:
+      ec2_public_ip:
+        default: localhost
+        description: EC2 public IP supplied at deploy time
+  - url: http://localhost
+    description: Local Docker Compose development
+
+tags:
+  - name: auth
+    description: |
+      ID.me OAuth + JWT session management. 🔴 Red Zone per `AI_ZONES.md` — every
+      implementation decision must be approved by the human before code is generated.
+  - name: vendors
+    description: |
+      Vendor list and detail. RBAC-filtered. Detail endpoint is admin-only and audit
+      logs every BANK_DETAILS access.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Security
+# ─────────────────────────────────────────────────────────────────────────────
+security:
+  - cookieAuth: []
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Paths
+# ─────────────────────────────────────────────────────────────────────────────
+paths:
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Begin ID.me OAuth flow
+      description: |
+        Generates a one-shot `state`, stores it server-side (10-minute TTL), and
+        returns the full ID.me authorisation URL. The SPA performs the redirect.
+      operationId: beginLogin
+      security: []        # Public — initiates auth
+      responses:
+        "200":
+          description: Authorisation URL returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthorizeUrlResponse" }
+        "502":
+          $ref: "#/components/responses/IdentityProviderUnreachable"
+
+  /api/auth/callback:
+    post:
+      tags: [auth]
+      summary: Complete ID.me OAuth flow and issue session
+      description: |
+        Accepts the `code` and `state` returned by ID.me to the SPA's
+        `/verification/callback` route. The backend:
+          1. Validates `state` against the in-process cache (one-shot, 10 min TTL).
+          2. Exchanges `code` for an ID token at ID.me `/oauth/token` (timeout 5 s).
+          3. Validates the ID token (`iss`, `aud`, `exp`, `iat`, signature via JWKS).
+          4. Looks up the user in Oracle `STAFF` by `EMPLOYEE_ID = sub`.
+          5. Applies the access decision tree (see FUNCTIONAL_DESIGN §6.6).
+          6. On `GRANTED`, signs a JWT (HS256, 4 h TTL) and sets the `session` cookie.
+      operationId: completeLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CallbackRequest" }
+      responses:
+        "200":
+          description: Session established. JWT set as `session` HttpOnly cookie.
+          headers:
+            Set-Cookie:
+              description: |
+                `session=<JWT>; HttpOnly; SameSite=Lax; Path=/; Max-Age=14400`
+                (Adds `Secure` when HTTPS is enabled.)
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionResponse" }
+        "400":
+          description: "`state` invalid or expired"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                detail: "Authentication request expired. Please verify again."
+        "401":
+          description: ID.me token exchange or ID-token validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                detail: "Identity verification failed."
+        "403":
+          description: |
+            User identified but not authorised. The `X-Auth-Reason` response header
+            distinguishes denial reasons so the SPA can route to the correct page
+            without parsing English copy.
+          headers:
+            X-Auth-Reason:
+              required: true
+              schema:
+                type: string
+                enum: [LEVEL_ZERO, NOT_REGISTERED]
+              description: |
+                * `LEVEL_ZERO` — user exists, `PROCUREMENT_LEVEL = 0`. SPA routes to `/access-denied`.
+                * `NOT_REGISTERED` — combines `NOT_FOUND`, `IDME_VERIFIED='N'`, `ACTIVE='N'`. Same UX (no account-existence leak).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              examples:
+                level_zero:
+                  summary: PROCUREMENT_LEVEL = 0
+                  value:
+                    detail: "Access denied. Your account does not have procurement clearance."
+                not_registered:
+                  summary: Not found / not verified / inactive
+                  value:
+                    detail: "Your identity has been verified but you are not registered in the FCPS procurement system. Contact your procurement coordinator."
+        "502":
+          $ref: "#/components/responses/IdentityProviderUnreachable"
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: End the current session
+      description: |
+        Clears the `session` cookie. Always returns 204, even if the caller had no
+        valid session (idempotent).
+      operationId: logout
+      responses:
+        "204":
+          description: Session cleared. `Set-Cookie` clears the `session` cookie.
+          headers:
+            Set-Cookie:
+              description: '`session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`'
+              schema: { type: string }
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: Return the current session's claims
+      description: |
+        Called by the SPA on every mount to determine whether the user is logged in
+        and which role to render. A 401 from this endpoint is the SPA's signal to
+        redirect to `/?reason=session_expired`.
+      operationId: getCurrentSession
+      responses:
+        "200":
+          description: Authenticated session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionResponse" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/vendors:
+    get:
+      tags: [vendors]
+      summary: List vendors (RBAC-filtered)
+      description: |
+        Returns the level- and role-appropriate slice of `PROCUREMENT_ITEMS`:
+
+        | Role / Level                   | Statuses returned       | Columns returned |
+        | ------------------------------ | ----------------------- | ---------------- |
+        | `STAFF` / level = 1            | APPROVED only           | `item_id, vendor_name, item_name, category` |
+        | `STAFF` / level = 2            | APPROVED only           | + `contact_name, contact_email` |
+        | `ADMIN` / level = 3            | All statuses            | + `status, unit_price, bank_details` |
+
+        An empty list is a valid 200 response — the SPA renders the empty state.
+      operationId: listVendors
+      responses:
+        "200":
+          description: Vendor list, shaped per the caller's role and level
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: "#/components/schemas/VendorListItemL1"
+                    - $ref: "#/components/schemas/VendorListItemL2"
+                    - $ref: "#/components/schemas/VendorListItemAdmin"
+                  discriminator:
+                    propertyName: variant
+                    mapping:
+                      staff_l1: "#/components/schemas/VendorListItemL1"
+                      staff_l2: "#/components/schemas/VendorListItemL2"
+                      admin:    "#/components/schemas/VendorListItemAdmin"
+              examples:
+                staff_l1_empty:
+                  summary: LEVEL 1 staff, no approved vendors yet
+                  value: []
+                staff_l2:
+                  summary: LEVEL 2 staff
+                  value:
+                    - variant: staff_l2
+                      item_id: 12
+                      vendor_name: "Dell Technologies"
+                      item_name: "Laptop fleet (Latitude 5440)"
+                      category: "Technology"
+                      contact_name: "Pat Lee"
+                      contact_email: "pat.lee@dell.example.com"
+                admin:
+                  summary: Admin (LEVEL 3)
+                  value:
+                    - variant: admin
+                      item_id: 12
+                      vendor_name: "Dell Technologies"
+                      item_name: "Laptop fleet (Latitude 5440)"
+                      category: "Technology"
+                      contact_name: "Pat Lee"
+                      contact_email: "pat.lee@dell.example.com"
+                      status: "APPROVED"
+                      unit_price: 1129.00
+                      bank_details: "Wells Fargo •••• 4421"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/vendors/{vendor_id}:
+    get:
+      tags: [vendors]
+      summary: Get a single vendor's full record (admin only)
+      description: |
+        Admin-only. Returns the full `PROCUREMENT_ITEMS` row plus the new `approved_at`
+        date when `status == "APPROVED"`. **Every successful response that includes
+        `bank_details` triggers an `AUDIT_LOG` write** containing `STAFF_ID`,
+        `VENDOR_ID`, `ACCESSED_AT`. The `bank_details` value is never written to
+        `AUDIT_LOG` or application logs (FR-13).
+      operationId: getVendorDetail
+      parameters:
+        - in: path
+          name: vendor_id
+          required: true
+          schema: { type: integer, minimum: 1 }
+          description: "`PROCUREMENT_ITEMS.ITEM_ID`"
+      responses:
+        "200":
+          description: Vendor detail (admin only)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorDetail" }
+              example:
+                variant: admin_detail
+                item_id: 12
+                vendor_name: "Dell Technologies"
+                item_name: "Laptop fleet (Latitude 5440)"
+                category: "Technology"
+                contact_name: "Pat Lee"
+                contact_email: "pat.lee@dell.example.com"
+                status: "APPROVED"
+                unit_price: 1129.00
+                bank_details: "Wells Fargo •••• 4421"
+                approved_at: "2026-03-14"
+                created_date: "2026-02-28T14:03:22Z"
+                updated_date: "2026-03-14T09:18:05Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          description: Authenticated but not authorised (caller is not `ADMIN`)
+          headers:
+            X-Auth-Reason:
+              required: true
+              schema: { type: string, enum: [ROLE_FORBIDDEN] }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                detail: "You do not have permission to view this resource."
+        "404":
+          description: No vendor exists with the given `vendor_id`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                detail: "Vendor not found."
+        "500":
+          description: |
+            Server-side failure — most likely the `AUDIT_LOG` write failed. Per
+            FR-13 the audit is non-negotiable: if it cannot be written, the response
+            is not returned. The browser-facing body never contains stack traces.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                detail: "Something went wrong. Please try again."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Components
+# ─────────────────────────────────────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: |
+        JWT (HS256, claims `sub=staff_id, role, procurement_level, iat, exp, iss, aud`)
+        in an `HttpOnly; SameSite=Lax` cookie. TTL configurable via `JWT_TTL_HOURS`
+        (default 4). Issued by `POST /api/auth/callback`, cleared by
+        `POST /api/auth/logout`. The `session` cookie is the **only** accepted
+        credential — no bearer header.
+
+  responses:
+
+    Unauthenticated:
+      description: |
+        No session cookie, or the cookie is invalid/expired. The SPA's API client
+        treats any 401 as a global event and redirects to `/?reason=session_expired`.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            detail: "Session invalid or expired."
+
+    IdentityProviderUnreachable:
+      description: ID.me is unreachable or returned an unrecoverable error during token exchange.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            detail: "Identity provider unreachable."
+
+  schemas:
+
+    # ─── Auth ──────────────────────────────────────────────────────────────
+
+    AuthorizeUrlResponse:
+      type: object
+      required: [authorize_url]
+      properties:
+        authorize_url:
+          type: string
+          format: uri
+          description: Full ID.me authorisation URL. SPA redirects the browser to this URL.
+          example: "https://api.id.me/oauth/authorize?client_id=…&redirect_uri=…&response_type=code&scope=openid+email&state=…"
+
+    CallbackRequest:
+      type: object
+      required: [code, state]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: ID.me authorisation code as delivered to `/verification/callback`.
+        state:
+          type: string
+          minLength: 1
+          description: ID.me `state` parameter; must match the value cached at `/api/auth/login`.
+
+    SessionResponse:
+      type: object
+      required: [role, procurement_level]
+      properties:
+        role:
+          type: string
+          enum: [ADMIN, STAFF]
+        procurement_level:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: |
+            Only levels 1, 2, 3 are returned. LEVEL 0 never produces a session — the
+            user is denied at `/api/auth/callback` with a 403.
+
+    # ─── Vendors ───────────────────────────────────────────────────────────
+
+    VendorStatus:
+      type: string
+      enum: [PENDING, UNDER_REVIEW, APPROVED, REJECTED]
+
+    VendorListItemL1:
+      type: object
+      description: List item visible to `STAFF` / `PROCUREMENT_LEVEL = 1`.
+      required: [variant, item_id, vendor_name, item_name, category]
+      additionalProperties: false
+      properties:
+        variant:
+          type: string
+          const: staff_l1
+        item_id:
+          type: integer
+          description: "`PROCUREMENT_ITEMS.ITEM_ID`"
+        vendor_name:
+          type: string
+        item_name:
+          type: string
+        category:
+          type: string
+
+    VendorListItemL2:
+      type: object
+      description: List item visible to `STAFF` / `PROCUREMENT_LEVEL = 2`.
+      required: [variant, item_id, vendor_name, item_name, category, contact_name, contact_email]
+      additionalProperties: false
+      properties:
+        variant:
+          type: string
+          const: staff_l2
+        item_id: { type: integer }
+        vendor_name: { type: string }
+        item_name: { type: string }
+        category: { type: string }
+        contact_name:
+          type: string
+          nullable: true
+        contact_email:
+          type: string
+          format: email
+          nullable: true
+
+    VendorListItemAdmin:
+      type: object
+      description: List item visible to `ADMIN` / `PROCUREMENT_LEVEL = 3`.
+      required:
+        - variant
+        - item_id
+        - vendor_name
+        - item_name
+        - category
+        - contact_name
+        - contact_email
+        - status
+        - unit_price
+        - bank_details
+      additionalProperties: false
+      properties:
+        variant:
+          type: string
+          const: admin
+        item_id: { type: integer }
+        vendor_name: { type: string }
+        item_name: { type: string }
+        category: { type: string }
+        contact_name:
+          type: string
+          nullable: true
+        contact_email:
+          type: string
+          format: email
+          nullable: true
+        status:
+          $ref: "#/components/schemas/VendorStatus"
+        unit_price:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+        bank_details:
+          type: string
+          nullable: true
+          description: |
+            Sensitive. Only returned for `ADMIN`. When `null`, the UI renders
+            "Not on file" (FR-14). This field's presence in this response **does not**
+            trigger an audit log entry — only `/api/vendors/{vendor_id}` does (FR-13).
+
+    VendorDetail:
+      type: object
+      description: |
+        Full vendor record for `ADMIN`. Every 200 response from
+        `GET /api/vendors/{vendor_id}` that includes a non-null `bank_details` writes
+        one row to `AUDIT_LOG (STAFF_ID, VENDOR_ID, ACCESSED_AT)`.
+      required:
+        - variant
+        - item_id
+        - vendor_name
+        - item_name
+        - category
+        - contact_name
+        - contact_email
+        - status
+        - unit_price
+        - bank_details
+        - approved_at
+        - created_date
+        - updated_date
+      additionalProperties: false
+      properties:
+        variant:
+          type: string
+          const: admin_detail
+        item_id: { type: integer }
+        vendor_name: { type: string }
+        item_name: { type: string }
+        category: { type: string }
+        contact_name:
+          type: string
+          nullable: true
+        contact_email:
+          type: string
+          format: email
+          nullable: true
+        status:
+          $ref: "#/components/schemas/VendorStatus"
+        unit_price:
+          type: number
+          format: double
+          nullable: true
+        bank_details:
+          type: string
+          nullable: true
+        approved_at:
+          type: string
+          format: date
+          nullable: true
+          description: |
+            Date the vendor's status last transitioned to `APPROVED`. `null` for
+            vendors that have never been approved. Requires the
+            `PROCUREMENT_ITEMS.APPROVED_AT` column added by ADR-006 (see
+            FUNCTIONAL_DESIGN §2 conflict C-06).
+        created_date:
+          type: string
+          format: date-time
+        updated_date:
+          type: string
+          format: date-time
+
+    # ─── Errors ────────────────────────────────────────────────────────────
+
+    Error:
+      type: object
+      description: |
+        FastAPI default error envelope. Browser-facing copy only — stack traces and
+        internal codes never leak (NFR-12). Sub-reason for 403s is delivered via the
+        `X-Auth-Reason` response header, not in the body.
+      required: [detail]
+      additionalProperties: false
+      properties:
+        detail:
+          type: string
+          description: User-facing error message. Safe to display verbatim.
