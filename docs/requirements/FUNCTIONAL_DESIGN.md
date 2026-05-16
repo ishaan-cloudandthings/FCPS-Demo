@@ -3,12 +3,12 @@
 | Field | Value |
 |---|---|
 | Document | FUNCTIONAL_DESIGN.md |
-| Version | 0.2 — conflict resolution updated against `docs/adr/` (ADR-004 to ADR-011); Registration explicitly scoped out; screen inventory clarified |
-| Date | 2026-05-14 |
+| Version | 0.4 — `contact_email` removed from list responses per [ADR-013](../adr/ADR-013-api-responses-match-ui-display.md). Lives only in `VendorDetail`. |
+| Date | 2026-05-16 |
 | Author | C&T BA (Claude) |
-| Source of truth | [REQUIREMENTS.md](./REQUIREMENTS.md) v0.2 |
+| Source of truth | [REQUIREMENTS.md](./REQUIREMENTS.md) v0.5 |
 | Reference docs | [../ARCHITECTURE.md](../ARCHITECTURE.md), [../DATA_MODEL.md](../DATA_MODEL.md), [../../AI_ZONES.md](../../AI_ZONES.md), [../AI_POLICY.md](../AI_POLICY.md), [../adr/](../adr/) |
-| Status | v0.1 reviewed; v0.2 reflects the ADRs accepted on 2026-05-14 |
+| Status | v0.3 reviewed; v0.4 applies the ADR-013 cascade (OQ-08 resolved) |
 
 ---
 
@@ -40,7 +40,7 @@ follow-ups) but those are mechanical and do not block development.
 | C-02 | `ARCHITECTURE.md` §10 env vars | `ACCESS_TOKEN_EXPIRE_MINS` | `JWT_TTL_HOURS` | ✅ Resolved — [ADR-004](../adr/ADR-004-session-cookie-and-jwt.md) |
 | C-03 | `AI_CONTEXT.md` Key Business Domains 1; `ARCHITECTURE.md` §6.2 page list | "Staff Registration — self-service form", `Registration.jsx` | No registration; staff pre-loaded in Oracle | ✅ Resolved — [ADR-005](../adr/ADR-005-no-staff-registration-in-demo.md); see also REQUIREMENTS.md §1.3 out-of-scope row and §9 D-18 |
 | C-04 | `ARCHITECTURE.md` §6.1 module map | `api/auth.py`, callback at `/api/auth/callback` | Discovery notes use `/verification/callback` | ✅ Resolved within this FD — backend route `/api/auth/callback` (FastAPI), SPA route `/verification/callback`. See §5 URL map + §6.1. |
-| C-05 | `DATA_MODEL.md` | No `AUDIT_LOG` table | `AUDIT_LOG` required (FR-13) | ✅ Decision resolved — [ADR-006](../adr/ADR-006-audit-log-and-approved-at.md). DATA_MODEL.md doc-update still pending. |
+| C-05 | `DATA_MODEL.md` | No `AUDIT_LOG` table | ~~`AUDIT_LOG` required (FR-13)~~ | 🚫 **Scope-removed** — [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md) (2026-05-16). `AUDIT_LOG` is not built. |
 | C-06 | `DATA_MODEL.md` | No `APPROVED_AT` column on `PROCUREMENT_ITEMS` | "Approved on" displayed in admin detail view (FR-15) | ✅ Decision resolved — [ADR-006](../adr/ADR-006-audit-log-and-approved-at.md). DATA_MODEL.md doc-update still pending. |
 | C-07 | `DATA_MODEL.md` PROCUREMENT_ITEMS | `ITEM_NAME` (singular item) | Calls describe "Vendors" as the unit (a vendor offers items/services) | ✅ Resolved as interpretation: each row is one vendor offering. `VENDOR_NAME` is the row's display key. No schema change required for the demo. |
 | C-08 | `DATA_MODEL.md` STAFF | `ACTIVE` (Y/N) column exists | Not mentioned in discovery | ✅ Resolved as design decision — `ACTIVE='N'` denies access (same UX as `IDME_VERIFIED='N'`). See §6.3 and §6.6. |
@@ -61,17 +61,19 @@ Per `AI_ZONES.md`:
 |---|---|---|
 | `backend/app/auth/` (JWT internals) | 🔴 Red | Design choices in §6.4 surfaced as numbered decisions D-FD-01 … D-FD-07. Implementation must wait for human approval of each. |
 | `backend/app/api/auth.py` (ID.me callback, login, logout) | 🔴 Red | Same — decisions D-FD-08 … D-FD-12 in §6.1. |
-| `backend/app/services/` (`oracle_service`, `access_service`, `rbac_service`, new `audit_service`) | 🟡 Yellow | Draft provided in §6.5–6.8; developer rewrites or meaningfully edits. |
+| `backend/app/services/` (`oracle_service`, `access_service`, `rbac_service`) | 🟡 Yellow | Draft provided in §6.5–6.7; developer rewrites or meaningfully edits. *`audit_service` was removed by ADR-012.* |
 | `backend/app/api/procurement.py` (vendor list + detail) | 🟡 Yellow | Draft in §6.2. |
 | `frontend/src/pages/` (`StaffView`, `AdminView`, `VendorDetail`, `VerificationCallback`, `AccessDenied`, `Login`) | 🟡 Yellow | Draft in §7. |
-| `frontend/src/components/` (`StatusBadge`, `VendorTable`, `BankDetailsCard`, `SearchBar`, `EmptyState`, `Header`) | 🟢 Green | AI may fully implement; developer reviews. |
-| `backend/scripts/seed_oracle.py` (additions for AUDIT_LOG and approval timestamp) | 🟢 Green | AI writes. |
+| `frontend/src/components/` (`StatusBadge`, `VendorTable`, `SearchBar`, `EmptyState`, `Header`) | 🟢 Green | AI may fully implement; developer reviews. *`BankDetailsCard` was removed by ADR-012.* |
+| `backend/scripts/seed_oracle.py` (adds `APPROVED_AT` column per ADR-006) | 🟢 Green | AI writes. |
 | `backend/app/schemas/` (Pydantic) | 🟢 Green | AI writes (derived from §6 + api-spec.yaml). |
 
 **PII handling** (per `AI_POLICY.md`) applies in every zone. Wherever `FULL_NAME`,
-`EMAIL`, `EMPLOYEE_ID`, `CONTACT_NAME`, `CONTACT_EMAIL`, or `BANK_DETAILS` is touched,
-the implementer must confirm logging exclusions and response scoping before generating
-code (see §9 and §11).
+`EMAIL`, `EMPLOYEE_ID`, `CONTACT_NAME`, or `CONTACT_EMAIL` is touched, the
+implementer must confirm logging exclusions and response scoping before
+generating code (see §9 and §11). *`BANK_DETAILS` is out of scope per
+[ADR-012](../adr/ADR-012-bank-details-out-of-scope.md) and is not selected,
+returned, or rendered anywhere.*
 
 ---
 
@@ -107,7 +109,7 @@ Resolving conflict C-04 explicitly:
 | `/api/auth/logout` | FastAPI | Clears JWT cookie; 204 |
 | `/api/auth/me` | FastAPI | Returns current session claims; used by SPA on page load |
 | `/api/vendors` | FastAPI | RBAC-filtered list |
-| `/api/vendors/{id}` | FastAPI | Admin-only detail; writes AUDIT_LOG on BANK_DETAILS access |
+| `/api/vendors/{id}` | FastAPI | Admin-only detail (returns full record minus `BANK_DETAILS`). No audit log per ADR-012. |
 
 **The ID.me-registered redirect URI** is the frontend page
 `http(s)://<EC2_PUBLIC_IP>/verification/callback`. The backend's `/api/auth/callback`
@@ -175,10 +177,9 @@ detail endpoint additionally depends on `Depends(require_role("ADMIN"))`.
 The list endpoint always returns 200 — an empty list is a valid response and the
 frontend renders the empty state. The list shape is **level-aware**: see §6.7.
 
-The detail endpoint, when called by an admin, calls `audit_service.record_access(...)`
-**after** the row is fetched but **before** the response is serialised, so an audit
-write failure aborts the response (returns 500). This is intentional: per FR-13 the
-audit log is a compliance requirement, not best-effort.
+The detail endpoint is a simple admin-only read. *Earlier drafts wrote an
+`AUDIT_LOG` row before serialising — that posture was removed by ADR-012
+along with the `audit_service` module and the entire audit-log table.*
 
 ### 6.3 Authentication / authorisation dependencies — `backend/app/auth/dependencies.py` 🔴 Red
 
@@ -219,10 +220,18 @@ Decisions surfaced for Red Zone approval:
 ```python
 class OracleService:
     def get_staff_by_employee_id(self, employee_id: str) -> StaffRecord | None: ...
-    def list_vendors(self, only_approved: bool, include_contact: bool, include_bank: bool, include_status: bool) -> list[VendorRow]: ...
+    def list_vendors(self, only_approved: bool, include_contact: bool, include_status: bool) -> list[VendorRow]: ...
     def get_vendor_by_id(self, item_id: int) -> VendorRow | None: ...
-    def insert_audit_log(self, staff_id: int, vendor_id: int, accessed_at: datetime) -> None: ...
 ```
+
+> *`insert_audit_log` and the `include_bank` flag were removed by
+> [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md). The
+> `BANK_DETAILS` column is not selected by any query.*
+>
+> *`list_vendors` does NOT select `CONTACT_EMAIL` — per
+> [ADR-013](../adr/ADR-013-api-responses-match-ui-display.md), email is
+> only returned by `get_vendor_by_id` (admin-only detail endpoint). The
+> `include_contact` flag selects `CONTACT_NAME` only.*
 
 Parameterised queries only — `cursor.execute(sql, {"employee_id": employee_id})`.
 Never f-strings into SQL. Returns plain dataclasses (`StaffRecord`, `VendorRow`); the
@@ -271,32 +280,34 @@ Single source of truth for "what columns does a role/level see":
 ```python
 def list_query_params(role: str, level: int) -> ListQueryParams:
     if role == "ADMIN":
-        return ListQueryParams(only_approved=False, include_contact=True, include_bank=True, include_status=True)
+        return ListQueryParams(only_approved=False, include_contact=True, include_status=True)
     if role == "STAFF" and level == 2:
-        return ListQueryParams(only_approved=True, include_contact=True, include_bank=False, include_status=False)
+        return ListQueryParams(only_approved=True, include_contact=True, include_status=False)
     if role == "STAFF" and level == 1:
-        return ListQueryParams(only_approved=True, include_contact=False, include_bank=False, include_status=False)
+        return ListQueryParams(only_approved=True, include_contact=False, include_status=False)
     raise PermissionError  # LEVEL 0 never reaches here — caught in access_service
 ```
 
 `oracle_service.list_vendors` honours these flags by selecting columns conditionally
 and including `WHERE STATUS = 'APPROVED'` when `only_approved=True`.
 
-### 6.8 Audit service — `backend/app/services/audit_service.py` 🟡 Yellow
+> *The `include_bank` flag was removed by
+> [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md). `BANK_DETAILS`
+> is never queried, regardless of role.*
+>
+> *Per [ADR-013](../adr/ADR-013-api-responses-match-ui-display.md), the
+> `include_contact` flag drives selection of `CONTACT_NAME` only. There
+> is no `include_contact_email` flag; `CONTACT_EMAIL` is selected only by
+> the detail endpoint (`get_vendor_by_id`).*
 
-```python
-def record_bank_details_access(staff_id: int, vendor_id: int) -> None:
-    accessed_at = datetime.now(timezone.utc)
-    oracle.insert_audit_log(staff_id, vendor_id, accessed_at)
-    logger.info("audit.bank_details_access", staff_id=staff_id, vendor_id=vendor_id, ts=accessed_at.isoformat())
-```
+### 6.8 ~~Audit service~~ — **REMOVED by ADR-012**
 
-**Never logs `BANK_DETAILS` value.** Logger call uses structured kwargs only;
-log formatter is configured to drop any key matching `bank|secret|password`
-(belt-and-braces — see `utils/logging.py`).
-
-Synchronous write — no background tasks for the demo. Failure raises and the API
-handler converts to 500 (see §10).
+This section previously defined `backend/app/services/audit_service.py` —
+synchronous write to `AUDIT_LOG` on every `BANK_DETAILS` access, fail-closed
+posture, etc. The entire service is removed by
+[ADR-012](../adr/ADR-012-bank-details-out-of-scope.md): with bank-details
+out of scope, there is nothing left to audit. No `audit_service` module is
+built; no `AUDIT_LOG` table is created.
 
 ### 6.9 Pydantic schemas — `backend/app/schemas/` 🟢 Green
 
@@ -322,15 +333,16 @@ class VendorListItemL1(BaseModel):
 
 class VendorListItemL2(VendorListItemL1):
     contact_name: str | None
-    contact_email: EmailStr | None
+    # contact_email moved to VendorDetail only by ADR-013
 
 class VendorListItemAdmin(VendorListItemL2):
     status: Literal["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED"]
     unit_price: Decimal | None
-    bank_details: str | None  # only ever non-null in admin responses
+    # bank_details removed by ADR-012; contact_email moved to detail by ADR-013
 
 class VendorDetail(VendorListItemAdmin):
-    approved_at: date | None       # populated when status == APPROVED (requires schema add C-06)
+    contact_email: EmailStr | None  # detail-only per ADR-013
+    approved_at: date | None        # populated when status == APPROVED (requires schema add C-06)
     created_date: datetime
     updated_date: datetime
 ```
@@ -389,7 +401,7 @@ pre-loaded by `scripts/seed_oracle.py` and the portal never inserts into
 | `VerificationCallback.jsx` | `/verification/callback` | Anonymous | OAuth return | Posts code+state; shows "Verifying your identity…" with a max-3 s skeleton. On 403 routes to `/access-denied` (with sub-reason) or `/` with error toast. **No infinite spinner — bounded by a 10 s frontend timeout, then user-friendly retry.** |
 | `StaffView.jsx` | `/vendors` (STAFF) | LEVEL 1 / 2 | Approved-vendor list | Renders `<VendorTable variant="staff-L1" \| "staff-L2" />`, `<SearchBar />`, `<EmptyState />`. |
 | `AdminView.jsx` | `/vendors` (ADMIN) | LEVEL 3 | All-status vendor list | Renders `<VendorTable variant="admin" />` with status column + status dropdown filter. |
-| `VendorDetail.jsx` | `/vendors/:id` | LEVEL 3 only | Full vendor detail | Renders full record card, `<BankDetailsCard />` for bank details, "Approved on: \<date>" line when status is APPROVED, "Back to list" link. |
+| `VendorDetail.jsx` | `/vendors/:id` | LEVEL 3 only | Full vendor detail | Renders Item / Service card, Contact card (name + email), Metadata sidebar (vendor ID, status, approval date, created, last update). "Approved on: \<date>" line when status is APPROVED. "Back to list" link. *(`BankDetailsCard` was removed by ADR-012.)* |
 | `AccessDenied.jsx` | `/access-denied` | LEVEL 0 | Friendly denial | Clean, non-alarming message + contact instruction. Single "Back to FCPS" link to log out. |
 
 ### 7.4 Components — `frontend/src/components/` 🟢 Green
@@ -403,9 +415,10 @@ pre-loaded by `scripts/seed_oracle.py` and the portal never inserts into
 - `SearchBar.jsx` — controlled text input with debounce (150 ms) for the client-side
   filter; emits `onChange(value)`. ARIA `role="searchbox"` + label.
 - `EmptyState.jsx` — props `{ title, hint }`. Always rendered when `rows.length === 0`.
-- `BankDetailsCard.jsx` — bordered card, muted background, "Sensitive — your access is
-  logged" sub-label; shows "Not on file" when value is null (FR-14).
 - `LoadingState.jsx` — bounded skeleton; never an indefinite spinner.
+
+> *`BankDetailsCard.jsx` was removed by
+> [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md).*
 
 ### 7.5 State — `frontend/src/store/` 🟡 Yellow
 
@@ -489,7 +502,7 @@ Browser     SPA(React)     FastAPI                Oracle       ID.me
    │◄── render StaffView ─────────│                                                      │
 ```
 
-### 8.2 Admin opens vendor detail (AUDIT_LOG written)
+### 8.2 Admin opens vendor detail
 
 ```
 Browser     SPA      FastAPI                       Oracle
@@ -497,14 +510,14 @@ Browser     SPA      FastAPI                       Oracle
    │── click row ─►     │                              │
    │         │── GET /api/vendors/123 ─►│              │
    │         │          │── require_role("ADMIN")      │
-   │         │          │── SELECT … FROM PROCUREMENT_ITEMS WHERE ITEM_ID=123 ─►│
-   │         │          │◄── row (with BANK_DETAILS) ◄─│
-   │         │          │── audit_service.record_bank_details_access(staff_id, 123) ─►│
-   │         │          │                              │── INSERT INTO AUDIT_LOG …
-   │         │          │                              │◄── 1 row ◄
-   │         │◄── 200 VendorDetail (with bank_details) ◄│
-   │◄── render VendorDetail + <BankDetailsCard /> ──────│
+   │         │          │── SELECT [non-bank columns] FROM PROCUREMENT_ITEMS WHERE ITEM_ID=123 ─►│
+   │         │          │◄── row (BANK_DETAILS not selected) ◄─│
+   │         │◄── 200 VendorDetail ◄────│
+   │◄── render VendorDetail (Item / Contact / Metadata cards) ─│
 ```
+
+> *Previously this flow wrote an `AUDIT_LOG` row before responding. Removed
+> by [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md).*
 
 ### 8.3 LEVEL 0 denial
 
@@ -542,8 +555,9 @@ the three confirmation questions before generating code. The design decisions ar
 |---|---|---|---|
 | `EMPLOYEE_ID` | Never returned in any API response. Used internally for Oracle lookup. | Never logged. | Map `sub → EMPLOYEE_ID` happens in `access_service`; the value does not leave the service. |
 | `FULL_NAME`, `EMAIL` | Header may show first name only (e.g. "Sarah") sourced from `/api/auth/me` if the SPA needs it. **Decision D-FD-13** in §16 — not yet committed. | Never logged. | If the header line shows the name, the response of `/api/auth/me` is the only place `FULL_NAME` appears. |
-| `CONTACT_NAME`, `CONTACT_EMAIL` | LEVEL ≥ 2 only. | Never logged. | Schema responses for L1 do not include these fields at all (not just null). |
-| `BANK_DETAILS` | LEVEL 3 only, only on `/api/vendors/{id}`. | Never logged. Logger formatter strips. | Audit row written on every successful access (FR-13). |
+| `CONTACT_NAME` | LEVEL ≥ 2 in list response; admin in detail. | Never logged. | L1 list response does not include this field at all (not just null). |
+| `CONTACT_EMAIL` | **Detail endpoint only** (`GET /api/vendors/{id}`, admin-only). Never in any list response. | Never logged. | Per [ADR-013](../adr/ADR-013-api-responses-match-ui-display.md) — API responses match UI display. The detail view is the only screen that renders the email. |
+| ~~`BANK_DETAILS`~~ | **Out of scope per [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md).** Not returned, not rendered, not logged. | — | The Oracle column still exists in `DATA_MODEL.md`; no application code touches it. |
 
 Pydantic response models for L1 and L2 omit the higher-level fields entirely
 (distinct classes) rather than including them with null values, to keep
@@ -563,7 +577,7 @@ Backend error envelope (FastAPI default `{detail: string}` kept):
 | 403 (`LEVEL_ZERO`) | Access decision LEVEL 0 | "Access denied. Your account does not have procurement clearance." | `/access-denied` page |
 | 403 (`NOT_REGISTERED`) | NOT_FOUND, NOT_VERIFIED, INACTIVE | "Your identity has been verified but you are not registered in the FCPS procurement system. Contact your procurement coordinator." | `/access-denied` page (same UX; no enumeration leak) |
 | 404 | `/api/vendors/{id}` no row | "Vendor not found." | `<NotFound />` mini-state on detail page |
-| 500 | Oracle/audit write failed | "Something went wrong. Please try again." | Toast; **stack trace never leaks**. |
+| 500 | Oracle error (query failure, connection error) | "Something went wrong. Please try again." | Toast; **stack trace never leaks**. *(The `500 on audit failure` clause was removed by ADR-012.)* |
 | 502 | ID.me unreachable / token call failed | "Identity provider unreachable." | Toast on login page; retry button. |
 
 403s carry a sub-reason in a custom header `X-Auth-Reason` so the SPA can pick the
@@ -584,7 +598,6 @@ Beyond what's already in `ARCHITECTURE.md` §10:
 | `IDME_AUTHORIZE_URL` | Full path, e.g. `${IDME_BASE_URL}/oauth/authorize` | derived |
 | `IDME_TOKEN_URL` | Full path, e.g. `${IDME_BASE_URL}/oauth/token` | derived |
 | `IDME_JWKS_URL` | For ID-token signature verification | derived |
-| `AUDIT_LOG_ENABLED` | Kill switch (default `true`; demo never sets `false`) | `true` |
 
 Resolution C-01/C-02 (ADR-004) should drop `ACCESS_TOKEN_EXPIRE_MINS` and rename.
 
@@ -595,24 +608,19 @@ Resolution C-01/C-02 (ADR-004) should drop `ACCESS_TOKEN_EXPIRE_MINS` and rename
 The build cannot start until DATA_MODEL.md is updated (via ADR-006) to add:
 
 ```
-AUDIT_LOG
-─────────
-LOG_ID         NUMBER (PK, IDENTITY)
-STAFF_ID       NUMBER (FK → STAFF.STAFF_ID, ON DELETE RESTRICT)
-VENDOR_ID      NUMBER (FK → PROCUREMENT_ITEMS.ITEM_ID, ON DELETE RESTRICT)
-ACCESSED_AT    TIMESTAMP WITH TIME ZONE  NOT NULL
-
-Index: IDX_AUDIT_VENDOR_ACCESSED (VENDOR_ID, ACCESSED_AT DESC)
-Index: IDX_AUDIT_STAFF_ACCESSED (STAFF_ID, ACCESSED_AT DESC)
-
 PROCUREMENT_ITEMS
 ─────────────────
 + APPROVED_AT   TIMESTAMP WITH TIME ZONE  NULL
   (set whenever STATUS transitions to 'APPROVED'; remains NULL otherwise)
 ```
 
-`scripts/seed_oracle.py` will be extended to create both and seed plausible
-`APPROVED_AT` values for the 5 APPROVED rows.
+`scripts/seed_oracle.py` will be extended to add this column and seed
+plausible `APPROVED_AT` values for the 5 APPROVED rows.
+
+> *Previously this section also specified an `AUDIT_LOG` table (LOG_ID,
+> STAFF_ID, VENDOR_ID, ACCESSED_AT + two indexes). That table was removed
+> by [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md) along with the
+> rest of the audit-logging requirement.*
 
 ---
 
@@ -621,7 +629,7 @@ PROCUREMENT_ITEMS
 | Concern | Approach |
 |---|---|
 | `GET /api/vendors` p95 < 500 ms | Dataset is ~120 rows. A single indexed scan on `IDX_PROC_STATUS` plus column projection. Oracle XE on the same host, sub-10 ms expected. Headroom is for cold connection / JWT decode. |
-| `GET /api/vendors/{id}` p95 < 300 ms | PK lookup + 1 audit insert. Audit insert is the dominant cost; commits use Oracle defaults (autocommit off; explicit commit on the same transaction is fine). |
+| `GET /api/vendors/{id}` p95 < 300 ms | PK lookup. Single-row read on the indexed primary key; sub-5 ms expected on Oracle XE. *(Previous draft included an audit insert here; removed by ADR-012.)* |
 | Login page < 3 s | SPA is a small Vite/CRA bundle served by Nginx from disk. Gzip enabled in Nginx. ID.me discovery URL pre-fetched. |
 | Oracle XE cold start | EC2 boot script runs a "warm-up" `SELECT 1 FROM DUAL` against XE 60 s after container start. Documented in deploy README. |
 
@@ -634,8 +642,8 @@ With ~120 rows this is fine and avoids cache-coherency bugs.
 
 | Layer | Tool | Focus |
 |---|---|---|
-| Backend unit | Pytest | `access_service` decision tree (all 5 reasons); `rbac_service` column flags per role/level; `jwt` sign/verify; audit write failure → 500. |
-| Backend integration | Pytest + httpx + testcontainers Oracle | `/api/vendors` for L1, L2, ADMIN returns the right shape; `/api/vendors/{id}` writes AUDIT_LOG row and doesn't on 404. |
+| Backend unit | Pytest | `access_service` decision tree (all 5 reasons); `rbac_service` column flags per role/level; `jwt` sign/verify. |
+| Backend integration | Pytest + httpx + testcontainers Oracle | `/api/vendors` for L1, L2, ADMIN returns the right shape; `/api/vendors/{id}` returns 200 for admin, 403 for STAFF, 404 for unknown ID. |
 | ID.me callback | Mocked at the `requests.post` boundary. Test happy path, expired state, invalid id_token, ID.me 5xx → 502. |
 | Frontend unit | Jest + RTL | `StatusBadge` colour + text; `EmptyState` props; `apiFetch` 401 → redirect side-effect. |
 | Frontend integration | RTL + MSW | StaffView L1 vs L2 column rendering; AdminView status filter; VerificationCallback success and 403→/access-denied. |
@@ -669,7 +677,7 @@ Unchanged from `ARCHITECTURE.md` §5. Notable specifics:
 | OQ-FD-01 | When HTTPS is enabled, cookie `Secure=true`. Today's demo is HTTP; do we make the cookie env-driven `JWT_COOKIE_SECURE` so HTTPS rollout is a config flip? | Yes — env-driven, default `false`. | C&T Tech Lead |
 | OQ-FD-02 | `state` cache backing store. In-process dict is fine for one Uvicorn worker. If we ever scale to multiple workers, we need a shared store (Redis) — not in demo scope. | In-process dict, single worker. Document the constraint. | C&T Tech Lead |
 | OQ-FD-03 | D-FD-13: Show the user's first name in the header? Requires `GET /api/auth/me` to return name, which means PII leaves the backend. The wins are minor (friendliness). | **Do not** show name; header reads "Signed in (ADMIN)" / "Signed in". | C&T Project Lead |
-| OQ-FD-04 | If `audit_service.record_bank_details_access` fails, the API returns 500 and the admin sees an error. Alternative: best-effort logging with alert. Which posture? | 500 / fail-closed — matches FR-13 framing. | C&T Project Lead |
+| ~~OQ-FD-04~~ | ~~Audit-write failure handling.~~ **Removed by [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md) — no audit service to fail.** | — |
 | OQ-FD-05 | OpenAPI `oneOf` for `/api/vendors` response. Easy in spec, mildly awkward in clients. Alternative: a single union schema with optional fields. | `oneOf` — preserves the "structurally impossible to over-disclose" guarantee from §6.9. | C&T Tech Lead |
 | OQ-FD-06 | Should `/api/auth/me` 401 trigger `?reason=session_expired` on **every** unauthenticated mount, or only when there was a prior session? Frontend has no durable hint either way. | Only on mid-session 401 (detected by SPA flag in session storage). On fresh page load, no banner. | C&T Tech Lead |
 | OQ-FD-07 | Idle timeout for shared-school-computer concern (you opted for "Logout button" only). Confirm we are **not** adding idle timeout. | No idle timeout. | Project Lead (you) |

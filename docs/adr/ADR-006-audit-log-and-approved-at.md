@@ -2,11 +2,16 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted |
+| Status | Partially superseded — **`AUDIT_LOG` portion superseded by [ADR-012](./ADR-012-bank-details-out-of-scope.md) (2026-05-16)**. `APPROVED_AT` portion remains in force. |
 | Date | 2026-05-14 |
 | Author | C&T BA (Claude), on behalf of C&T Tech Lead |
 | Supersedes | — |
-| Superseded by | — |
+| Superseded by | [ADR-012](./ADR-012-bank-details-out-of-scope.md) — partial; `AUDIT_LOG` only |
+
+> **Read this with ADR-012.** On 2026-05-16, `BANK_DETAILS` was removed from
+> demo scope. With no bank-details access to log, the `AUDIT_LOG` table this
+> ADR proposed is no longer needed. The `APPROVED_AT` column addition below
+> still stands and is required by FR-15.
 
 ## Context
 

@@ -13,7 +13,7 @@ info:
     performs the code exchange, validates the ID token, looks the user up in the Oracle
     `STAFF` table, and issues a JWT in an `HttpOnly; SameSite=Lax` cookie named
     `session`. All `/api/vendors/*` endpoints require this cookie. All access to
-    `BANK_DETAILS` is audit-logged in the `AUDIT_LOG` table.
+    Bank details and audit logging are out of scope per ADR-012 — no `BANK_DETAILS` field is returned, and no `AUDIT_LOG` table exists.
 
     Naming, layer order, and conventions follow `AI_CONTEXT.md`. RBAC follows the
     role/level matrix in `REQUIREMENTS.md` §2.2.
@@ -43,8 +43,9 @@ tags:
       implementation decision must be approved by the human before code is generated.
   - name: vendors
     description: |
-      Vendor list and detail. RBAC-filtered. Detail endpoint is admin-only and audit
-      logs every BANK_DETAILS access.
+      Vendor list and detail. RBAC-filtered. Detail endpoint is admin-only.
+      (Bank-details and audit-log behaviour described in earlier drafts were
+      removed by ADR-012.)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Security
@@ -194,8 +195,8 @@ paths:
         | Role / Level                   | Statuses returned       | Columns returned |
         | ------------------------------ | ----------------------- | ---------------- |
         | `STAFF` / level = 1            | APPROVED only           | `item_id, vendor_name, item_name, category` |
-        | `STAFF` / level = 2            | APPROVED only           | + `contact_name, contact_email` |
-        | `ADMIN` / level = 3            | All statuses            | + `status, unit_price, bank_details` |
+        | `STAFF` / level = 2            | APPROVED only           | + `contact_name` (no `contact_email` per ADR-013) |
+        | `ADMIN` / level = 3            | All statuses            | + `status, unit_price` (no `bank_details` per ADR-012; no `contact_email` per ADR-013) |
 
         An empty list is a valid 200 response — the SPA renders the empty state.
       operationId: listVendors
@@ -230,7 +231,6 @@ paths:
                       item_name: "Laptop fleet (Latitude 5440)"
                       category: "Technology"
                       contact_name: "Pat Lee"
-                      contact_email: "pat.lee@dell.example.com"
                 admin:
                   summary: Admin (LEVEL 3)
                   value:
@@ -240,10 +240,8 @@ paths:
                       item_name: "Laptop fleet (Latitude 5440)"
                       category: "Technology"
                       contact_name: "Pat Lee"
-                      contact_email: "pat.lee@dell.example.com"
                       status: "APPROVED"
                       unit_price: 1129.00
-                      bank_details: "Wells Fargo •••• 4421"
         "401":
           $ref: "#/components/responses/Unauthenticated"
 
@@ -252,11 +250,11 @@ paths:
       tags: [vendors]
       summary: Get a single vendor's full record (admin only)
       description: |
-        Admin-only. Returns the full `PROCUREMENT_ITEMS` row plus the new `approved_at`
-        date when `status == "APPROVED"`. **Every successful response that includes
-        `bank_details` triggers an `AUDIT_LOG` write** containing `STAFF_ID`,
-        `VENDOR_ID`, `ACCESSED_AT`. The `bank_details` value is never written to
-        `AUDIT_LOG` or application logs (FR-13).
+        Admin-only. Returns the full `PROCUREMENT_ITEMS` row (excluding
+        `BANK_DETAILS` per ADR-012) plus the new `approved_at` date when
+        `status == "APPROVED"`. *Previous drafts wrote an `AUDIT_LOG` row on
+        every response containing `bank_details`; the entire audit-log
+        requirement was removed by ADR-012.*
       operationId: getVendorDetail
       parameters:
         - in: path
@@ -280,7 +278,6 @@ paths:
                 contact_email: "pat.lee@dell.example.com"
                 status: "APPROVED"
                 unit_price: 1129.00
-                bank_details: "Wells Fargo •••• 4421"
                 approved_at: "2026-03-14"
                 created_date: "2026-02-28T14:03:22Z"
                 updated_date: "2026-03-14T09:18:05Z"
@@ -306,9 +303,10 @@ paths:
                 detail: "Vendor not found."
         "500":
           description: |
-            Server-side failure — most likely the `AUDIT_LOG` write failed. Per
-            FR-13 the audit is non-negotiable: if it cannot be written, the response
-            is not returned. The browser-facing body never contains stack traces.
+            Server-side failure (Oracle query error, connection drop, etc.).
+            The browser-facing body never contains stack traces. *(The
+            "audit write failure" case from earlier drafts was removed by
+            ADR-012 along with the rest of the audit-log requirement.)*
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -422,8 +420,10 @@ components:
 
     VendorListItemL2:
       type: object
-      description: List item visible to `STAFF` / `PROCUREMENT_LEVEL = 2`.
-      required: [variant, item_id, vendor_name, item_name, category, contact_name, contact_email]
+      description: |
+        List item visible to `STAFF` / `PROCUREMENT_LEVEL = 2`.
+        `contact_email` was removed from this schema by ADR-013 — email lives only in `VendorDetail`.
+      required: [variant, item_id, vendor_name, item_name, category, contact_name]
       additionalProperties: false
       properties:
         variant:
@@ -436,14 +436,12 @@ components:
         contact_name:
           type: string
           nullable: true
-        contact_email:
-          type: string
-          format: email
-          nullable: true
 
     VendorListItemAdmin:
       type: object
-      description: List item visible to `ADMIN` / `PROCUREMENT_LEVEL = 3`.
+      description: |
+        List item visible to `ADMIN` / `PROCUREMENT_LEVEL = 3`.
+        `bank_details` was removed by ADR-012; `contact_email` was removed by ADR-013 (lives only in `VendorDetail`).
       required:
         - variant
         - item_id
@@ -451,10 +449,8 @@ components:
         - item_name
         - category
         - contact_name
-        - contact_email
         - status
         - unit_price
-        - bank_details
       additionalProperties: false
       properties:
         variant:
@@ -467,10 +463,6 @@ components:
         contact_name:
           type: string
           nullable: true
-        contact_email:
-          type: string
-          format: email
-          nullable: true
         status:
           $ref: "#/components/schemas/VendorStatus"
         unit_price:
@@ -478,20 +470,15 @@ components:
           format: double
           nullable: true
           minimum: 0
-        bank_details:
-          type: string
-          nullable: true
-          description: |
-            Sensitive. Only returned for `ADMIN`. When `null`, the UI renders
-            "Not on file" (FR-14). This field's presence in this response **does not**
-            trigger an audit log entry — only `/api/vendors/{vendor_id}` does (FR-13).
 
     VendorDetail:
       type: object
       description: |
-        Full vendor record for `ADMIN`. Every 200 response from
-        `GET /api/vendors/{vendor_id}` that includes a non-null `bank_details` writes
-        one row to `AUDIT_LOG (STAFF_ID, VENDOR_ID, ACCESSED_AT)`.
+        Full vendor record for `ADMIN`. The **only** schema in the API surface
+        that returns `contact_email` (per [ADR-013](../adr/ADR-013-api-responses-match-ui-display.md))
+        — list endpoints return contact name only. `bank_details` was removed
+        from this schema by ADR-012, along with the audit-log row this endpoint
+        used to write.
       required:
         - variant
         - item_id
@@ -502,7 +489,6 @@ components:
         - contact_email
         - status
         - unit_price
-        - bank_details
         - approved_at
         - created_date
         - updated_date
@@ -527,9 +513,6 @@ components:
         unit_price:
           type: number
           format: double
-          nullable: true
-        bank_details:
-          type: string
           nullable: true
         approved_at:
           type: string

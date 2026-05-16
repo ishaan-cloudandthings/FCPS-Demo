@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verifying… | FCPS Procurement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-50:  #EEF1FB;
+    --blue-100: #DDE3F5;
+    --blue-300: #8895D1;
+    --blue-500: #3B4EA8;
+    --blue-700: #2D3D8A;
+    --blue-900: #1F2C66;
+    --orange-50:  #FEF3E2;
+    --orange-100: #FCD9A8;
+    --orange-500: #F47920;
+    --orange-600: #DA660D;
+    --white: #FFFFFF;
+    --surface: #F5F6FA;
+    --border: #E5E7EB;
+    --text: #111827;
+    --text-muted: #4B5563;
+    --text-subtle: #9CA3AF;
+    --amber-text: #92400E;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(ellipse at top left, var(--blue-50) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, var(--orange-50) 0%, transparent 60%),
+      var(--surface);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    padding: 3rem 1.5rem;
+  }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .page-shell {
+    max-width: 1180px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 3rem;
+  }
+  .review-header {
+    display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 0.5rem;
+  }
+  .review-header h2 {
+    font-size: 1rem; font-weight: 600; color: var(--text); margin: 0;
+  }
+  .review-header p {
+    margin: 0; font-size: 0.875rem; color: var(--text-muted);
+  }
+  .variant { display: flex; flex-direction: column; gap: 0.875rem; }
+  .variant-label {
+    display: flex; align-items: center; gap: 0.625rem;
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-subtle); font-weight: 600;
+  }
+  .variant-label .pill {
+    background: white; padding: 0.25rem 0.625rem; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem; text-transform: none; letter-spacing: 0;
+  }
+
+  /* Frame */
+  .frame {
+    background: white; border-radius: 14px; overflow: hidden;
+    box-shadow:
+      0 1px 2px rgba(31,41,55,0.06),
+      0 12px 24px -8px rgba(31,41,55,0.12),
+      0 30px 60px -20px rgba(31,41,55,0.18);
+    border: 1px solid var(--border);
+  }
+  .frame-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #F4F6FA 0%, #E9ECF3 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .frame-bar .dots { display: flex; gap: 6px; }
+  .frame-bar .dot { width: 12px; height: 12px; border-radius: 50%; background: #C5C9D6; }
+  .frame-bar .url {
+    flex: 1; background: white; border-radius: 6px;
+    padding: 6px 12px; font-size: 0.8125rem; color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    border: 1px solid var(--border);
+  }
+
+  /* Header */
+  header.app {
+    background: linear-gradient(180deg, var(--blue-500) 0%, var(--blue-700) 100%);
+    color: white; padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative;
+  }
+  header.app::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--orange-500) 50%, transparent 100%);
+    opacity: 0.6;
+  }
+  .brand-wordmark {
+    display: flex; align-items: center; gap: 0.625rem;
+    font-weight: 700; font-size: 1rem;
+  }
+  .brand-wordmark .mark {
+    width: 26px; height: 26px; background: var(--orange-500);
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 800; font-size: 0.875rem;
+    box-shadow: 0 2px 6px rgba(244,121,32,0.4);
+  }
+  .built-by {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.72);
+    letter-spacing: 0.01em;
+  }
+  .footer-content {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.75rem;
+  }
+  .footer-built-by {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    color: var(--text-muted);
+  }
+  .footer-logo { height: 22px; width: auto; vertical-align: middle; }
+
+  /* Status surface */
+  .status-surface {
+    background:
+      radial-gradient(circle at 30% 20%, rgba(59,78,168,0.06) 0%, transparent 55%),
+      radial-gradient(circle at 70% 80%, rgba(244,121,32,0.06) 0%, transparent 50%),
+      var(--surface);
+    padding: 4rem 1.5rem;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 540px;
+    position: relative;
+  }
+  .status-surface::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(31,41,55,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,41,55,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+  .status-card {
+    background: white;
+    border-radius: 16px;
+    padding: 3rem 2.75rem;
+    width: 100%; max-width: 440px;
+    text-align: center;
+    box-shadow:
+      0 1px 2px rgba(31,41,55,0.05),
+      0 10px 20px -6px rgba(31,41,55,0.08),
+      0 30px 60px -16px rgba(31,41,55,0.10);
+    border: 1px solid var(--border);
+    position: relative; z-index: 1;
+  }
+
+  /* Spinner */
+  .spinner-wrap {
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.5rem auto;
+    width: 72px; height: 72px;
+    position: relative;
+  }
+  .spinner-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    background: radial-gradient(circle, rgba(244,121,32,0.18) 0%, transparent 65%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .spinner {
+    width: 72px; height: 72px;
+    animation: spin 1.2s linear infinite;
+    display: block;
+    position: relative; z-index: 1;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; }
+  }
+
+  .status-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--orange-600);
+    margin-bottom: 0.625rem;
+  }
+  .status-card h1 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin: 0 0 0.625rem 0;
+    color: var(--text);
+    letter-spacing: -0.015em;
+  }
+  .status-card .sub {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .status-card .sub.with-cta { margin-bottom: 1.5rem; }
+
+  /* Bounded progress */
+  .bounded-progress {
+    width: 180px;
+    height: 5px;
+    background: var(--blue-50);
+    border-radius: 999px;
+    margin: 1.75rem auto 0 auto;
+    overflow: hidden;
+    position: relative;
+  }
+  .bounded-progress::after {
+    content: '';
+    display: block;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, var(--orange-500), var(--orange-600));
+    border-radius: 999px;
+    transform: translateX(-100%);
+    animation: slide 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  @keyframes slide { to { transform: translateX(0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .bounded-progress::after { animation: none; transform: translateX(0); opacity: 0.5; }
+  }
+  .progress-label {
+    font-size: 0.75rem;
+    color: var(--text-subtle);
+    margin: 0.625rem 0 0 0;
+  }
+
+  /* Timeout illustration */
+  .timeout-illo {
+    width: 80px; height: 80px;
+    margin: 0 auto 1.5rem auto;
+    background:
+      radial-gradient(circle, rgba(244,121,32,0.18) 0%, rgba(244,121,32,0.08) 70%, transparent 100%);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .timeout-illo::after {
+    content: '';
+    position: absolute; inset: 12px;
+    background: var(--orange-50);
+    border: 1px solid var(--orange-100);
+    border-radius: 50%;
+  }
+  .timeout-illo svg { position: relative; z-index: 1; color: var(--amber-text); }
+
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(180deg, var(--orange-500) 0%, var(--orange-600) 100%);
+    color: white; border: none;
+    font-family: inherit; font-weight: 600; font-size: 0.9375rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.20) inset,
+      0 1px 2px rgba(184,85,16,0.40),
+      0 6px 16px -4px rgba(244,121,32,0.45);
+    transition: all 0.18s ease;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.25) inset,
+      0 1px 2px rgba(184,85,16,0.40),
+      0 10px 22px -4px rgba(244,121,32,0.55);
+  }
+  .btn-primary:focus-visible { outline: 3px solid var(--blue-500); outline-offset: 2px; }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: var(--blue-500);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .back-link:hover { text-decoration: underline; }
+  .back-link:focus-visible { outline: 3px solid var(--blue-500); outline-offset: 2px; border-radius: 4px; }
+
+  footer.app {
+    padding: 0.875rem 2rem;
+    border-top: 1px solid var(--border);
+    background: white;
+    color: var(--text-subtle);
+    font-size: 0.75rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-shell">
+
+  <div class="review-header">
+    <h2>Verification Callback — design review</h2>
+    <p>Route: <code>/verification/callback?code=…&amp;state=…</code> · Two variants: in-progress and 10-second timeout.</p>
+  </div>
+
+  <!-- Variant A: Verifying -->
+  <div class="variant">
+    <div class="variant-label">In progress — 0 to 10 s <span class="pill">/verification/callback?code=…&amp;state=…</span></div>
+
+    <div class="frame">
+      <div class="frame-bar" aria-hidden="true">
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <div class="url">https://procurement.fcps.edu/verification/callback?code=•••&amp;state=•••</div>
+      </div>
+
+      <header class="app" role="banner">
+        <span class="brand-wordmark">
+          <span class="mark" aria-hidden="true">F</span>
+          FCPS Vendor Procurement Portal
+        </span>
+        <span class="built-by">Built by Cloud &amp; Things</span>
+      </header>
+
+      <main role="main" class="status-surface">
+        <section class="status-card" role="status" aria-live="polite">
+          <div class="spinner-wrap" aria-hidden="true">
+            <svg class="spinner" width="72" height="72" viewBox="0 0 72 72" fill="none">
+              <!-- Blue track -->
+              <circle cx="36" cy="36" r="28" stroke="#DDE3F5" stroke-width="5"/>
+              <!-- Orange progress arc -->
+              <circle cx="36" cy="36" r="28" stroke="#F47920" stroke-width="5"
+                      stroke-linecap="round" stroke-dasharray="125 70"
+                      transform="rotate(-90 36 36)"/>
+            </svg>
+          </div>
+          <div class="status-eyebrow">Step 2 of 2 · Identity check</div>
+          <h1>Verifying your identity…</h1>
+          <p class="sub">Just a moment while we check your FCPS procurement access.</p>
+          <div class="bounded-progress" aria-hidden="true"></div>
+          <p class="progress-label" aria-hidden="true">Usually takes 1–3 seconds</p>
+          <span class="visually-hidden">Verification in progress</span>
+        </section>
+      </main>
+
+      <footer class="app" role="contentinfo">
+        <div class="footer-content">
+          <span>© Fairfax County Public Schools · Procurement Portal demo</span>
+          <span class="footer-built-by">
+            <span>Built by</span>
+            <img src="assets/CloudAndThingsv1transparent 1.png" alt="Cloud &amp; Things" class="footer-logo">
+          </span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Variant B: Timeout -->
+  <div class="variant">
+    <div class="variant-label">After 10 s — bounded timeout <span class="pill">network failure</span></div>
+
+    <div class="frame">
+      <div class="frame-bar" aria-hidden="true">
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <div class="url">https://procurement.fcps.edu/verification/callback?code=•••&amp;state=•••</div>
+      </div>
+
+      <header class="app" role="banner">
+        <span class="brand-wordmark">
+          <span class="mark" aria-hidden="true">F</span>
+          FCPS Vendor Procurement Portal
+        </span>
+        <span class="built-by">Built by Cloud &amp; Things</span>
+      </header>
+
+      <main role="main" class="status-surface">
+        <section class="status-card">
+          <div class="timeout-illo">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="status-eyebrow" style="color: var(--amber-text)">Taking too long</div>
+          <h1>This is taking longer than expected</h1>
+          <p class="sub with-cta">
+            We couldn't reach ID.me. Your sign-in hasn't been saved — please try again.
+          </p>
+          <button class="btn-primary" type="button">Try signing in again</button>
+          <a href="01-login.html" class="back-link">Back to sign in</a>
+        </section>
+      </main>
+
+      <footer class="app" role="contentinfo">
+        <div class="footer-content">
+          <span>© Fairfax County Public Schools · Procurement Portal demo</span>
+          <span class="footer-built-by">
+            <span>Built by</span>
+            <img src="assets/CloudAndThingsv1transparent 1.png" alt="Cloud &amp; Things" class="footer-logo">
+          </span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Access Denied | FCPS Procurement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-50:  #EEF1FB;
+    --blue-100: #DDE3F5;
+    --blue-300: #8895D1;
+    --blue-500: #3B4EA8;
+    --blue-700: #2D3D8A;
+    --blue-900: #1F2C66;
+    --orange-50:  #FEF3E2;
+    --orange-100: #FCD9A8;
+    --orange-200: #FBC384;
+    --orange-500: #F47920;
+    --orange-600: #DA660D;
+    --orange-700: #B85510;
+    --amber-text: #92400E;
+    --white: #FFFFFF;
+    --surface: #F5F6FA;
+    --border: #E5E7EB;
+    --text: #111827;
+    --text-muted: #4B5563;
+    --text-subtle: #9CA3AF;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(ellipse at top left, var(--blue-50) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, var(--orange-50) 0%, transparent 60%),
+      var(--surface);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    padding: 3rem 1.5rem;
+  }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .page-shell {
+    max-width: 1180px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 3rem;
+  }
+  .review-header { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 0.5rem; }
+  .review-header h2 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+  .review-header p { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+  .variant { display: flex; flex-direction: column; gap: 0.875rem; }
+  .variant-label {
+    display: flex; align-items: center; gap: 0.625rem;
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-subtle); font-weight: 600;
+  }
+  .variant-label .pill {
+    background: white; padding: 0.25rem 0.625rem; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem; text-transform: none; letter-spacing: 0;
+  }
+
+  .frame {
+    background: white; border-radius: 14px; overflow: hidden;
+    box-shadow:
+      0 1px 2px rgba(31,41,55,0.06),
+      0 12px 24px -8px rgba(31,41,55,0.12),
+      0 30px 60px -20px rgba(31,41,55,0.18);
+    border: 1px solid var(--border);
+  }
+  .frame-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #F4F6FA 0%, #E9ECF3 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .frame-bar .dots { display: flex; gap: 6px; }
+  .frame-bar .dot { width: 12px; height: 12px; border-radius: 50%; background: #C5C9D6; }
+  .frame-bar .url {
+    flex: 1; background: white; border-radius: 6px;
+    padding: 6px 12px; font-size: 0.8125rem; color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    border: 1px solid var(--border);
+  }
+
+  .skip-link {
+    position: absolute; left: -9999px; top: 0;
+    background: var(--blue-500); color: white;
+    padding: 0.5rem 1rem; text-decoration: none; font-weight: 500;
+    z-index: 100; border-radius: 0 0 6px 0;
+  }
+  .skip-link:focus { left: 0; outline: 3px solid var(--orange-500); outline-offset: -3px; }
+
+  /* Header (no user pill — user isn't really signed in) */
+  header.app {
+    background: linear-gradient(180deg, var(--blue-500) 0%, var(--blue-700) 100%);
+    color: white; padding: 0.875rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative;
+  }
+  header.app::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--orange-500) 50%, transparent 100%);
+    opacity: 0.6;
+  }
+  .brand-wordmark { display: flex; align-items: center; gap: 0.625rem; font-weight: 700; font-size: 1rem; }
+  .brand-wordmark .mark {
+    width: 26px; height: 26px; background: var(--orange-500);
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 800; font-size: 0.875rem;
+    box-shadow: 0 2px 6px rgba(244,121,32,0.4);
+  }
+  .built-by {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.72);
+    letter-spacing: 0.01em;
+  }
+
+  main {
+    padding: 4rem 1.5rem;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(59,78,168,0.05) 0%, transparent 55%),
+      radial-gradient(circle at 70% 80%, rgba(244,121,32,0.06) 0%, transparent 50%),
+      var(--surface);
+    min-height: 540px;
+    position: relative;
+  }
+  main::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(31,41,55,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,41,55,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+
+  .denied-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 3rem 2.75rem;
+    width: 100%; max-width: 480px;
+    text-align: center;
+    box-shadow:
+      0 1px 2px rgba(31,41,55,0.05),
+      0 10px 20px -6px rgba(31,41,55,0.08),
+      0 30px 60px -16px rgba(31,41,55,0.10);
+    position: relative; z-index: 1;
+  }
+
+  /* Lock icon illustration — soft amber, not error red */
+  .denied-illo {
+    width: 80px; height: 80px;
+    margin: 0 auto 1.5rem auto;
+    background:
+      radial-gradient(circle, rgba(244,121,32,0.18) 0%, rgba(244,121,32,0.06) 70%, transparent 100%);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .denied-illo::after {
+    content: '';
+    position: absolute; inset: 14px;
+    background: white;
+    border: 1px solid var(--orange-100);
+    border-radius: 50%;
+  }
+  .denied-illo svg { position: relative; z-index: 1; color: var(--orange-600); }
+
+  .denied-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--orange-700);
+    margin-bottom: 0.625rem;
+  }
+  .denied-card h1 {
+    font-size: 1.625rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.75rem 0;
+    color: var(--text);
+  }
+  .denied-card .sub {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    margin: 0 0 1.75rem 0;
+  }
+
+  /* Contact callout — soft blue, informational */
+  .contact-callout {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+    color: var(--blue-900);
+    padding: 0.875rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 1.75rem;
+    text-align: left;
+  }
+  .contact-callout svg { flex-shrink: 0; color: var(--blue-500); margin-top: 1px; }
+  .contact-callout p {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    width: 100%;
+    background: linear-gradient(180deg, var(--orange-500) 0%, var(--orange-600) 100%);
+    color: white; border: none;
+    font-family: inherit; font-weight: 600; font-size: 0.9375rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: 10px;
+    cursor: pointer; text-decoration: none;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.20) inset,
+      0 1px 2px rgba(184,85,16,0.40),
+      0 6px 16px -4px rgba(244,121,32,0.45);
+    transition: all 0.18s ease;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.25) inset,
+      0 1px 2px rgba(184,85,16,0.40),
+      0 10px 22px -4px rgba(244,121,32,0.55);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:focus-visible { outline: 3px solid var(--blue-500); outline-offset: 2px; }
+
+  .hint {
+    margin: 1rem 0 0 0;
+    font-size: 0.75rem;
+    color: var(--text-subtle);
+  }
+
+  footer.app {
+    padding: 0.875rem 2rem;
+    border-top: 1px solid var(--border);
+    background: white;
+    color: var(--text-subtle); font-size: 0.75rem;
+  }
+  .footer-content {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.75rem;
+  }
+  .footer-built-by { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); }
+  .footer-logo { height: 22px; width: auto; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div class="page-shell">
+
+  <div class="review-header">
+    <h2>Access Denied — design review</h2>
+    <p>Route: <code>/access-denied</code> · Two copy variants depending on the <code>X-Auth-Reason</code> sub-reason returned by <code>POST /api/auth/callback</code>: <code>LEVEL_ZERO</code> · <code>NOT_REGISTERED</code>. Visual treatment is identical.</p>
+  </div>
+
+  <!-- =============================================== -->
+  <!-- Variant 1: LEVEL_ZERO                           -->
+  <!-- =============================================== -->
+  <div class="variant">
+    <div class="variant-label">LEVEL 0 staff — no procurement clearance <span class="pill">X-Auth-Reason: LEVEL_ZERO</span></div>
+    <div class="frame">
+      <div class="frame-bar" aria-hidden="true">
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <div class="url">https://procurement.fcps.edu/access-denied</div>
+      </div>
+      <a href="#main-1" class="skip-link">Skip to main content</a>
+      <header class="app" role="banner">
+        <span class="brand-wordmark">
+          <span class="mark" aria-hidden="true">F</span>
+          FCPS Vendor Procurement Portal
+        </span>
+        <span class="built-by">Built by Cloud &amp; Things</span>
+      </header>
+
+      <main id="main-1" role="main">
+        <div class="denied-card">
+          <div class="denied-illo" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="11" width="16" height="10" rx="2"/>
+              <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+            </svg>
+          </div>
+          <div class="denied-eyebrow">Access restricted</div>
+          <h1>You don't have access to this portal</h1>
+          <p class="sub">
+            Your FCPS identity is verified, but your account doesn't have the
+            procurement clearance needed to view vendor records.
+          </p>
+
+          <div class="contact-callout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <p>
+              If you believe this is an error, contact your procurement coordinator.
+            </p>
+          </div>
+
+          <a class="btn-primary" href="#" aria-label="Back to FCPS — signs you out and returns to the FCPS site">
+            Back to FCPS
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+          <p class="hint">Clicking this will sign you out of the portal.</p>
+        </div>
+      </main>
+
+      <footer class="app" role="contentinfo">
+        <div class="footer-content">
+          <span>© Fairfax County Public Schools · Procurement Portal demo</span>
+          <span class="footer-built-by"><span>Built by</span><img src="assets/CloudAndThingsv1transparent 1.png" alt="Cloud &amp; Things" class="footer-logo"></span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- =============================================== -->
+  <!-- Variant 2: NOT_REGISTERED                       -->
+  <!-- =============================================== -->
+  <div class="variant">
+    <div class="variant-label">Identity verified, not in STAFF table <span class="pill">X-Auth-Reason: NOT_REGISTERED</span></div>
+    <div class="frame">
+      <div class="frame-bar" aria-hidden="true">
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <div class="url">https://procurement.fcps.edu/access-denied</div>
+      </div>
+      <a href="#main-2" class="skip-link">Skip to main content</a>
+      <header class="app" role="banner">
+        <span class="brand-wordmark">
+          <span class="mark" aria-hidden="true">F</span>
+          FCPS Vendor Procurement Portal
+        </span>
+        <span class="built-by">Built by Cloud &amp; Things</span>
+      </header>
+
+      <main id="main-2" role="main">
+        <div class="denied-card">
+          <div class="denied-illo" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="11" width="16" height="10" rx="2"/>
+              <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+            </svg>
+          </div>
+          <div class="denied-eyebrow">Access restricted</div>
+          <h1>We can't sign you in</h1>
+          <p class="sub">
+            Your identity has been verified, but you're not registered in the
+            FCPS procurement system.
+          </p>
+
+          <div class="contact-callout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <p>
+              If you believe this is an error, contact your procurement coordinator.
+            </p>
+          </div>
+
+          <a class="btn-primary" href="#" aria-label="Back to FCPS — signs you out and returns to the FCPS site">
+            Back to FCPS
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+          <p class="hint">Clicking this will sign you out of the portal.</p>
+        </div>
+      </main>
+
+      <footer class="app" role="contentinfo">
+        <div class="footer-content">
+          <span>© Fairfax County Public Schools · Procurement Portal demo</span>
+          <span class="footer-built-by"><span>Built by</span><img src="assets/CloudAndThingsv1transparent 1.png" alt="Cloud &amp; Things" class="footer-logo"></span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
