@@ -36,3 +36,6 @@ demoting an over-formal ADR is awkward.
 |---|---|---|
 | [AC-6-login-init.md](./AC-6-login-init.md) | Red Zone decisions for story AC-6 (POST /api/auth/login) | 2026-05-18 |
 | [AC-7-callback.md](./AC-7-callback.md) | Red Zone decisions for story AC-7 (POST /api/auth/callback) | 2026-05-18 |
+| [AC-8-jwt.md](./AC-8-jwt.md) | Red Zone decisions for story AC-8 (JWT issuance + verification + auth dependencies) | 2026-05-18 |
+| [AC-9-session-lifecycle.md](./AC-9-session-lifecycle.md) | Red Zone decisions for story AC-9 (POST /api/auth/logout + GET /api/auth/me) | 2026-05-18 |
+| [DEV-AUTH-persona-picker.md](./DEV-AUTH-persona-picker.md) | Red Zone code-level decisions for the dev-only persona login (see ADR-014) | 2026-05-18 |

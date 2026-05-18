@@ -234,7 +234,8 @@ def test_callback_happy_path_returns_200(
 
     assert response.status_code == 200
     body = response.json()
-    assert body == {"role": "STAFF", "procurement_level": 2}
+    # AC9-D4: callback response now also includes staff_id.
+    assert body == {"role": "STAFF", "procurement_level": 2, "staff_id": 42}
     # AC7-D11: access_service receives `sub`, not `staff_id`.
     assert mock_access_decision.received_sub == "FCPS-001"
     # AC-8 stub was invoked with the GRANTED fields.

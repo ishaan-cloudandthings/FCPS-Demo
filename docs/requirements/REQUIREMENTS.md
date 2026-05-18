@@ -187,7 +187,7 @@ Both variants share: clean, friendly, not an error page; contact line
 
 | ID | Requirement | Source |
 |---|---|---|
-| FR-01 | The portal SHALL authenticate users exclusively via ID.me OAuth. No username/password fields are present. | 2026-04-28, 2026-05-05 |
+| FR-01 | The portal SHALL authenticate users exclusively via ID.me OAuth in any non-`dev` environment. No username/password fields are present. **In `dev` environments only**, a hardcoded persona endpoint (`POST /api/auth/dev-login`) is permitted for demo and smoke-testing — scoped supersession per [ADR-014](../adr/ADR-014-demo-persona-login-dev-only.md); the endpoint is not registered when `ENVIRONMENT != dev` and FR-01 stands unmodified outside dev. | 2026-04-28, 2026-05-05, ADR-014 (2026-05-18) |
 | FR-02 | The backend SHALL exchange the ID.me authorisation code for an ID token server-side, never on the client. | 2026-05-05 |
 | FR-03 | The backend SHALL map the ID.me `sub` claim to `STAFF.EMPLOYEE_ID`. Access is granted only if a matching `STAFF` row exists **and** `IDME_VERIFIED = 'Y'` **and** `ACTIVE = 'Y'`. Any failure of these checks returns 403 with `X-Auth-Reason: NOT_REGISTERED` (single response for all three to avoid account-existence enumeration). | 2026-05-05, 2026-05-09, FUNCTIONAL_DESIGN.md §6.6 |
 | FR-04 | The backend SHALL deny access (403, Access Denied screen) to any user with `PROCUREMENT_LEVEL = 0`. | 2026-05-09 |
@@ -285,7 +285,7 @@ Oracle objects use `SCREAMING_SNAKE_CASE`. Primary keys are
 | # | Decision | Date / source |
 |---|---|---|
 | D-01 | Read-only portal for the demo. No create/edit/delete. | 2026-04-28 |
-| D-02 | ID.me is the only identity provider. | 2026-04-28 |
+| D-02 | ID.me is the only identity provider in any non-`dev` environment. In `dev` only, [ADR-014](../adr/ADR-014-demo-persona-login-dev-only.md) permits a hardcoded persona endpoint for the demo. | 2026-04-28; ADR-014 (2026-05-18) |
 | D-03 | Two roles, four levels (0–3). | 2026-04-28, 2026-05-09 |
 | ~~D-04~~ | ~~`BANK_DETAILS` LEVEL 3 only; audit-logged.~~ **Removed by ADR-012 (2026-05-16).** | — |
 | D-05 | JWT in `HttpOnly; SameSite=Lax` cookie (Lax supersedes the earlier Strict in 2026-05-05). | 2026-05-09 |

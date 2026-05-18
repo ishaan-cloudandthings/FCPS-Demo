@@ -21,6 +21,13 @@ def _env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IDME_ISSUER", "https://api.id.me")
     monkeypatch.setenv("IDME_REDIRECT_URI", "http://localhost/verification/callback")
     monkeypatch.setenv("IDME_SCOPE", "openid email")
+    # AC-8: JWT settings (AC8-D11: secret >= 32 chars for HS256 floor).
+    monkeypatch.setenv(
+        "JWT_SECRET_KEY",
+        "test-jwt-secret-key-with-at-least-32-characters-of-entropy",
+    )
+    monkeypatch.setenv("JWT_TTL_HOURS", "4")
+    monkeypatch.setenv("JWT_COOKIE_SECURE", "false")
 
 
 @pytest.fixture

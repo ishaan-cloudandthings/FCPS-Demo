@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     idme_redirect_uri: AnyHttpUrl
     idme_scope: str = "openid email"
 
+    # --- JWT session (AC-8 / ADR-004 / D-FD-01..07) ---
+    # AC8-D11: min_length 32 enforces HS256 security floor (256-bit / 32-byte key).
+    jwt_secret_key: str = Field(min_length=32)
+    jwt_ttl_hours: int = 4                # D-FD-03 default
+    jwt_cookie_secure: bool = False       # D-FD-04 / ADR-008 — env-driven
+
     # --- Environment ---
     environment: str = "dev"
 

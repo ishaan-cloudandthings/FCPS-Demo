@@ -162,6 +162,27 @@ is already logged in and what role to render. It is also the trigger for the ses
 expiry redirect (FR-08) — a 401 from `/me` causes the SPA to redirect to
 `/?reason=session_expired`.
 
+#### 6.1.1 Dev-only persona endpoint — `backend/app/api/dev_auth.py` 🔴 Red Zone
+
+Per [ADR-014](../adr/ADR-014-demo-persona-login-dev-only.md), a second auth surface
+exists in `dev` environments only:
+
+```
+POST /api/auth/dev-login              → 200 + Set-Cookie  (granted personas)
+                                        403 + X-Auth-Reason   (denied personas)
+GET  /api/auth/dev-login/available    → 200 in dev, 404 otherwise (probe)
+```
+
+Both routes are mounted by `main.py` only when `settings.environment == "dev"`,
+and every handler re-checks at request time and raises 404 if not. The five
+hardcoded personas (`admin_l3`, `staff_l2`, `staff_l1`, `level_zero`,
+`not_registered`) mint sessions via the exact same `issue_session_cookie` /
+`get_session_issuer` path as `/callback` — no second JWT format, no new cookie
+semantics. Code-level decisions DEV1 … DEV13 are in
+[`docs/decision-log/DEV-AUTH-persona-picker.md`](../decision-log/DEV-AUTH-persona-picker.md).
+This endpoint MUST NOT be present in any non-dev deployment; FR-01 stands outside
+`dev` (the supersession is environment-scoped, not requirement-scoped).
+
 ### 6.2 Procurement router — `backend/app/api/procurement.py` 🟡 Yellow
 
 ```

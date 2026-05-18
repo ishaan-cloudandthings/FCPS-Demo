@@ -1,0 +1,51 @@
+/*
+ * Global styles for the FCPS Procurement Portal SPA.
+ *
+ * Brand tokens live in `tailwind.config.js` (mirroring docs/design/brand.md).
+ * The component-level layouts come straight from the design mockups:
+ *   - docs/design/01-login.html
+ *   - docs/design/02-verification-callback.html
+ *
+ * Don't add page-specific styles here — keep them co-located with the page
+ * component using Tailwind utility classes.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    /* From 01-login.html `body { background: ... }` — soft blue/orange wash on
+     * a neutral surface. Used on the Login + Callback shells. */
+    background:
+      radial-gradient(ellipse at top left, #eef1fb 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, #fef3e2 0%, transparent 60%),
+      #f5f6fa;
+  }
+}
+
+@layer components {
+  /* Skip-to-main accessibility link — appears on focus only.
+   * Required on every screen per docs/design/DESIGN_RATIONALE.md §80. */
+  .skip-link {
+    @apply absolute -top-12 left-2 z-50 rounded-md bg-brand-blue-500 px-3 py-2 text-sm font-medium text-white shadow focus:top-2;
+  }
+
+  /* visually-hidden helper used for SR-only text (status announcements). */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}

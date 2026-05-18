@@ -35,6 +35,7 @@ In Red Zone, AI does not generate code speculatively. The sequence is:
 |-------------------------------------------|-----------------------------------------------------------------|
 | `backend/app/auth/`                       | JWT issuance, session management, token validation              |
 | `backend/app/api/auth.py`                 | ID.me OAuth callback, login, logout, token refresh              |
+| `backend/app/api/dev_auth.py`             | Dev-only persona login that mints session cookies — see [ADR-014](docs/adr/ADR-014-demo-persona-login-dev-only.md). Compiled out when `ENVIRONMENT != dev`. |
 
 ---
 

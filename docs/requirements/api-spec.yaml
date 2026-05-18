@@ -185,6 +185,75 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthenticated"
 
+  /api/auth/dev-login:
+    post:
+      tags: [auth, dev-only]
+      summary: '[DEV ONLY] Sign in as a hardcoded persona — see ADR-014'
+      description: |
+        **Mounted only when `ENVIRONMENT=dev`.** In any other environment the route
+        returns 404 — it is indistinguishable from "endpoint does not exist".
+
+        Five hardcoded personas mint the same session cookie shape as
+        `POST /api/auth/callback`. Granted personas return 200 + `Set-Cookie`;
+        denied personas return 403 with the same `X-Auth-Reason` headers and
+        body copy as the real flow.
+
+        Provided strictly to unblock UI development and stakeholder demos before
+        the ID.me sandbox + access service (AC-13) + Oracle seed (AC-14) are
+        wired up. See [ADR-014](../adr/ADR-014-demo-persona-login-dev-only.md)
+        for kill criteria.
+      operationId: devLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DevLoginRequest" }
+      responses:
+        "200":
+          description: Granted persona — session cookie issued (admin_l3, staff_l2, staff_l1).
+          headers:
+            Set-Cookie:
+              description: 'JWT session cookie identical in shape to `/api/auth/callback`.'
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionResponse" }
+        "403":
+          description: Denied persona (level_zero, not_registered) — matches the `/callback` denial envelope.
+          headers:
+            X-Auth-Reason:
+              description: '`LEVEL_ZERO` or `NOT_REGISTERED`.'
+              schema: { type: string, enum: [LEVEL_ZERO, NOT_REGISTERED] }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Endpoint not mounted — `ENVIRONMENT != dev`.
+        "422":
+          description: Unknown persona key.
+
+  /api/auth/dev-login/available:
+    get:
+      tags: [auth, dev-only]
+      summary: '[DEV ONLY] SPA probe — should the persona panel render?'
+      description: |
+        Returns 200 only when `ENVIRONMENT=dev`. The SPA renders the persona
+        picker on Login when this returns 200 and renders nothing otherwise. No
+        other client should depend on this endpoint.
+      operationId: devLoginAvailable
+      responses:
+        "200":
+          description: Dev environment — persona login is available.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [available]
+                properties:
+                  available: { type: boolean, enum: [true] }
+        "404":
+          description: Endpoint not mounted — `ENVIRONMENT != dev`.
+
   /api/vendors:
     get:
       tags: [vendors]
@@ -378,9 +447,20 @@ components:
           minLength: 1
           description: ID.me `state` parameter; must match the value cached at `/api/auth/login`.
 
+    DevLoginRequest:
+      type: object
+      description: |
+        Body for `POST /api/auth/dev-login`. Dev-only — see ADR-014.
+      required: [persona]
+      additionalProperties: false
+      properties:
+        persona:
+          type: string
+          enum: [admin_l3, staff_l2, staff_l1, level_zero, not_registered]
+
     SessionResponse:
       type: object
-      required: [role, procurement_level]
+      required: [role, procurement_level, staff_id]
       properties:
         role:
           type: string
@@ -392,6 +472,12 @@ components:
           description: |
             Only levels 1, 2, 3 are returned. LEVEL 0 never produces a session — the
             user is denied at `/api/auth/callback` with a 403.
+        staff_id:
+          type: integer
+          description: |
+            The authenticated user's `STAFF.STAFF_ID`. Used by the SPA to hydrate
+            its auth store on every mount (FD §7.2). Included in both
+            `POST /api/auth/callback` and `GET /api/auth/me` responses (AC9-D4).
 
     # ─── Vendors ───────────────────────────────────────────────────────────
 

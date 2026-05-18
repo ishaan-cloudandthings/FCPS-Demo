@@ -15,6 +15,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
+from app.core.config import get_settings
 from app.utils.logging import get_logger
 
 app = FastAPI(
@@ -23,6 +24,16 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+
+# Dev-only persona endpoint — ADR-014 (boot-time half of the DEV2 gate).
+# The router is not registered at all in non-dev environments; FastAPI
+# returns the same 404 it returns for any unknown path. Defence in depth:
+# the handlers in dev_auth.py also re-check at request time.
+_settings = get_settings()
+if _settings.environment == "dev":
+    from app.api.dev_auth import router as dev_auth_router
+
+    app.include_router(dev_auth_router)
 
 logger = get_logger(__name__)
 

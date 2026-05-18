@@ -1,13 +1,11 @@
 """
-🔴 RED ZONE — implements AC-6 (POST /api/auth/login) and AC-7 (POST /api/auth/callback).
+🔴 RED ZONE — implements AC-6 (POST /api/auth/login), AC-7 (POST /api/auth/callback),
+and AC-9 (POST /api/auth/logout + GET /api/auth/me).
 
 Ratified decisions live in:
     docs/decision-log/AC-6-login-init.md
     docs/decision-log/AC-7-callback.md
-
-Future stories add to this router:
-
-* AC-9  →  POST /api/auth/logout, GET /api/auth/me
+    docs/decision-log/AC-9-session-lifecycle.md
 """
 from __future__ import annotations
 
@@ -16,10 +14,15 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
+from app.auth.dependencies import require_authenticated
 from app.auth.id_token_validator import IDTokenInvalid, validate_id_token
 from app.auth.idme_client import IDMEUnreachable, exchange_code_for_token
 from app.auth.jwks_cache import JWKSCache
-from app.auth.jwt_session import issue_session_cookie
+from app.auth.jwt_session import (
+    SessionClaims,
+    delete_session_cookie,
+    issue_session_cookie,
+)
 from app.auth.state_cache import OAuthStateCache, StateCacheError
 from app.core.config import Settings, get_settings
 from app.schemas.auth import AuthorizeUrlResponse, CallbackRequest, SessionResponse
@@ -66,13 +69,38 @@ def get_access_decider() -> Callable[[str], AccessDecision]:
     return decide_access
 
 
-def get_session_issuer() -> Callable[..., None]:
+def get_session_issuer(
+    settings: Settings = Depends(get_settings),
+) -> Callable[..., None]:
     """FastAPI dependency returning the JWT-cookie issuer callable.
 
-    Production: returns the real `jwt_session.issue_session_cookie` (AC-8).
+    AC8-D2: the underlying `jwt_session.issue_session_cookie` takes
+    `secret_key`, `ttl_hours`, and `secure` as extra kwargs. We bind them
+    here from Settings so the endpoint (and AC-7 mocks) keep the original
+    `(response, *, staff_id, role, procurement_level)` signature.
+
+    Production: returns a closure over `issue_session_cookie` + settings.
     Tests: override to return a mock that records its call.
     """
-    return issue_session_cookie
+
+    def _wrapped(
+        response,
+        *,
+        staff_id: int,
+        role,
+        procurement_level: int,
+    ) -> None:
+        issue_session_cookie(
+            response,
+            staff_id=staff_id,
+            role=role,
+            procurement_level=procurement_level,
+            secret_key=settings.jwt_secret_key,
+            ttl_hours=settings.jwt_ttl_hours,
+            secure=settings.jwt_cookie_secure,
+        )
+
+    return _wrapped
 
 
 @router.post(
@@ -269,4 +297,52 @@ def complete_login(
     return SessionResponse(
         role=decision.role,
         procurement_level=decision.procurement_level,
+        staff_id=decision.staff_id,         # AC9-D4
+    )
+
+
+# ---------------------------------------------------------------------------
+# AC-9 — POST /api/auth/logout, GET /api/auth/me
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def logout(
+    response: Response,
+    settings: Settings = Depends(get_settings),
+) -> Response:
+    """End the current session.
+
+    AC9-D1 + AC9-D3: idempotent and unauthenticated. We always clear the
+    cookie and return 204, even if there was no valid session — this is
+    the only way the SPA can recover cleanly when its session has already
+    expired server-side.
+    """
+    delete_session_cookie(response, secure=settings.jwt_cookie_secure)
+    logger.info("auth.logout")                  # AC9-D6: no PII
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.get(
+    "/me",
+    response_model=SessionResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_current_session(
+    claims: SessionClaims = Depends(require_authenticated),
+) -> SessionResponse:
+    """Return the current session's claims.
+
+    AC9-D5: failure is handled by `require_authenticated` — same 401 +
+    body envelope as every other protected endpoint. AC9-D6: success path
+    logs nothing — called on every SPA mount, would flood logs.
+    """
+    return SessionResponse(
+        role=claims.role,
+        procurement_level=claims.procurement_level,
+        staff_id=claims.staff_id,
     )
