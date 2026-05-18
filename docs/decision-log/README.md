@@ -39,3 +39,5 @@ demoting an over-formal ADR is awkward.
 | [AC-8-jwt.md](./AC-8-jwt.md) | Red Zone decisions for story AC-8 (JWT issuance + verification + auth dependencies) | 2026-05-18 |
 | [AC-9-session-lifecycle.md](./AC-9-session-lifecycle.md) | Red Zone decisions for story AC-9 (POST /api/auth/logout + GET /api/auth/me) | 2026-05-18 |
 | [DEV-AUTH-persona-picker.md](./DEV-AUTH-persona-picker.md) | Red Zone code-level decisions for the dev-only persona login (see ADR-014) | 2026-05-18 |
+| [AC-11-oracle-staff-lookup.md](./AC-11-oracle-staff-lookup.md) | Yellow Zone decisions for story AC-11 (Oracle connection factory + STAFF query) | 2026-05-18 |
+| [AC-12-seed-staff.md](./AC-12-seed-staff.md) | Green Zone decisions for story AC-12 (seed_oracle.py STAFF schema + 10 records) + dev_auth staff_id realignment | 2026-05-18 |

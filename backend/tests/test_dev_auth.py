@@ -78,8 +78,9 @@ def _prod_settings_override():
 @pytest.mark.parametrize(
     "persona,expected_claims",
     [
+        # staff_ids align with AC-12 seed (DATA_MODEL.md §8) — AC12-D9.
         ("admin_l3", {"staff_id": 1, "role": "ADMIN", "procurement_level": 3}),
-        ("staff_l2", {"staff_id": 2, "role": "STAFF", "procurement_level": 2}),
+        ("staff_l2", {"staff_id": 6, "role": "STAFF", "procurement_level": 2}),
         ("staff_l1", {"staff_id": 3, "role": "STAFF", "procurement_level": 1}),
     ],
 )

@@ -49,10 +49,15 @@ logger = get_logger(__name__)
 
 # DEV3 — the persona table. Hardcoded by design; adding a persona is a
 # code change, not data-driven. Keys must match DevLoginRequest's Literal.
+#
+# staff_ids align with the AC-12 seed (DATA_MODEL.md §8) so that once
+# AC-13 wires the real /callback, introspecting a dev-session's staff_id
+# against Oracle resolves to a row with the same role/level. See
+# AC12-D9 in docs/decision-log/AC-12-seed-staff.md.
 _GRANTED_PERSONAS: dict[str, dict[str, object]] = {
-    "admin_l3": {"staff_id": 1, "role": "ADMIN", "procurement_level": 3},
-    "staff_l2": {"staff_id": 2, "role": "STAFF", "procurement_level": 2},
-    "staff_l1": {"staff_id": 3, "role": "STAFF", "procurement_level": 1},
+    "admin_l3": {"staff_id": 1, "role": "ADMIN", "procurement_level": 3},  # FCPS-001 Sarah Mitchell
+    "staff_l2": {"staff_id": 6, "role": "STAFF", "procurement_level": 2},  # FCPS-006 David Hernandez
+    "staff_l1": {"staff_id": 3, "role": "STAFF", "procurement_level": 1},  # FCPS-003 Linda Nguyen
 }
 
 _DENIED_PERSONAS: dict[str, tuple[str, str]] = {

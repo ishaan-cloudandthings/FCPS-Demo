@@ -62,10 +62,17 @@ following constraints:
    | Persona key       | Response | Session claims |
    |---|---|---|
    | `admin_l3`        | 200 + Set-Cookie | `{staff_id: 1, role: "ADMIN", procurement_level: 3}` |
-   | `staff_l2`        | 200 + Set-Cookie | `{staff_id: 2, role: "STAFF", procurement_level: 2}` |
+   | `staff_l2`        | 200 + Set-Cookie | `{staff_id: 6, role: "STAFF", procurement_level: 2}` |
    | `staff_l1`        | 200 + Set-Cookie | `{staff_id: 3, role: "STAFF", procurement_level: 1}` |
    | `level_zero`      | 403 + `X-Auth-Reason: LEVEL_ZERO` | — |
    | `not_registered`  | 403 + `X-Auth-Reason: NOT_REGISTERED` | — |
+
+   > **2026-05-18 correction (AC-12)** — `staff_l2`'s `staff_id` was originally
+   > `2`, but DATA_MODEL.md §8 lists `staff_id=2` as FCPS-002 / James Okafor
+   > (a second ADMIN). Realigned to `6` (FCPS-006 / David Hernandez) so that
+   > a dev session's `staff_id` resolves to a row with the role/level it
+   > claims, once AC-13 wires the real `/callback`. See
+   > [AC-12 decision log](../decision-log/AC-12-seed-staff.md) AC12-D9.
 
    Bodies match the real `/api/auth/callback` denial responses byte-for-byte
    (`FUNCTIONAL_DESIGN.md` §10).

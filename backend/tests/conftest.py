@@ -28,6 +28,13 @@ def _env(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setenv("JWT_TTL_HOURS", "4")
     monkeypatch.setenv("JWT_COOKIE_SECURE", "false")
+    # AC-11: Oracle (thin mode). Values are placeholders — the test
+    # suite mocks `oracledb.connect`, so these never reach a real DB.
+    monkeypatch.setenv("ORACLE_HOST", "test-oracle-host")
+    monkeypatch.setenv("ORACLE_PORT", "1521")
+    monkeypatch.setenv("ORACLE_SERVICE_NAME", "XEPDB1")
+    monkeypatch.setenv("ORACLE_USER", "test_user")
+    monkeypatch.setenv("ORACLE_PASSWORD", "test_password")
 
 
 @pytest.fixture
