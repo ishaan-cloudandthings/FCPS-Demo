@@ -276,7 +276,13 @@ function DevPersonaPanel() {
       navigate("/vendors", { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
-        navigate("/access-denied", { replace: true });
+        // AC14-D7 — pass X-Auth-Reason via route state so the
+        // AccessDenied page renders the correct copy variant.
+        const reason = err.headers?.get?.("X-Auth-Reason") ?? null;
+        navigate("/access-denied", {
+          replace: true,
+          state: { reason },
+        });
         return;
       }
       // Any other failure — silent reset; the panel stays.

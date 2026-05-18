@@ -12,9 +12,24 @@ import {
   vi,
 } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import { VerificationCallback } from "./VerificationCallback.jsx";
+
+/**
+ * Test stub that exposes the route-state `reason` via a data-testid so we
+ * can assert AC14-D7 threading without pulling AccessDenied into these
+ * tests.
+ */
+function AccessDeniedStub() {
+  const location = useLocation();
+  return (
+    <div>
+      <span>Access Denied page</span>
+      <span data-testid="route-reason">{location.state?.reason ?? "none"}</span>
+    </div>
+  );
+}
 
 function renderCallback(search = "?code=abc&state=xyz") {
   return render(
@@ -22,7 +37,7 @@ function renderCallback(search = "?code=abc&state=xyz") {
       <Routes>
         <Route path="/verification/callback" element={<VerificationCallback />} />
         <Route path="/vendors" element={<div>Vendors page</div>} />
-        <Route path="/access-denied" element={<div>Access Denied page</div>} />
+        <Route path="/access-denied" element={<AccessDeniedStub />} />
         <Route path="/" element={<div data-testid="login">Login page</div>} />
       </Routes>
     </MemoryRouter>,
@@ -73,6 +88,8 @@ describe("VerificationCallback", () => {
     );
     renderCallback();
     expect(await screen.findByText(/access denied page/i)).toBeInTheDocument();
+    // AC14-D7 — X-Auth-Reason from the 403 must be threaded via route state.
+    expect(screen.getByTestId("route-reason")).toHaveTextContent("LEVEL_ZERO");
   });
 
   it("bounces to / when code/state are missing", async () => {

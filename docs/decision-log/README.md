@@ -41,3 +41,5 @@ demoting an over-formal ADR is awkward.
 | [DEV-AUTH-persona-picker.md](./DEV-AUTH-persona-picker.md) | Red Zone code-level decisions for the dev-only persona login (see ADR-014) | 2026-05-18 |
 | [AC-11-oracle-staff-lookup.md](./AC-11-oracle-staff-lookup.md) | Yellow Zone decisions for story AC-11 (Oracle connection factory + STAFF query) | 2026-05-18 |
 | [AC-12-seed-staff.md](./AC-12-seed-staff.md) | Green Zone decisions for story AC-12 (seed_oracle.py STAFF schema + 10 records) + dev_auth staff_id realignment | 2026-05-18 |
+| [AC-13-access-service.md](./AC-13-access-service.md) | Yellow Zone decisions for story AC-13 (decide_access decision tree + OracleUnavailable → 503) | 2026-05-18 |
+| [AC-14-access-denied.md](./AC-14-access-denied.md) | Yellow Zone decisions for story AC-14 (frontend AccessDenied page + X-Auth-Reason → route state) | 2026-05-18 |

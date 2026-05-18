@@ -132,12 +132,20 @@ def mock_access_decision():
             procurement_level=2,
         )
         received_sub: str | None = None
+        # AC13-D6: tests can set `raises` to simulate an infrastructure
+        # failure from the decider (Oracle down, schema drift, etc.).
+        raises: BaseException | None = None
 
         def set(self, decision: AccessDecision) -> None:
             self.decision = decision
 
+        def set_raises(self, exc: BaseException) -> None:
+            self.raises = exc
+
         def __call__(self, sub: str) -> AccessDecision:
             self.received_sub = sub
+            if self.raises is not None:
+                raise self.raises
             return self.decision
 
     return Holder()
@@ -447,6 +455,31 @@ def test_callback_unregistered_collapses_to_not_registered(
     assert response.status_code == 403
     assert response.headers["X-Auth-Reason"] == "NOT_REGISTERED"
     assert "not registered in the FCPS procurement system" in response.json()["detail"]
+
+
+# -----------------------------------------------------------------------------
+# Oracle unavailable — AC13-D6
+# -----------------------------------------------------------------------------
+
+@respx.mock
+def test_callback_oracle_unavailable_returns_503(
+    callback_client, good_state, rsa_keypair, mock_access_decision
+):
+    """If the access decider raises OracleUnavailable, callback responds 503."""
+    from app.services.oracle_service import OracleUnavailable
+
+    mock_access_decision.set_raises(OracleUnavailable("simulated"))
+    _mock_idme_token(respx, _sign_token(rsa_keypair))
+    _mock_idme_jwks(respx, rsa_keypair["public_jwk"])
+
+    response = callback_client.post(
+        "/api/auth/callback",
+        json={"code": "c", "state": good_state},
+    )
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Service temporarily unavailable. Please try again shortly."
+    }
 
 
 # -----------------------------------------------------------------------------

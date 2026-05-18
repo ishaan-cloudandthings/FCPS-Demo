@@ -83,11 +83,13 @@ export function VerificationCallback() {
         }
         if (err instanceof ApiError) {
           if (err.status === 403) {
-            // LEVEL_ZERO or NOT_REGISTERED both land on AccessDenied
-            // (DESIGN_RATIONALE.md §253). The X-Auth-Reason header is
-            // available on err.headers if AccessDenied wants to vary
-            // copy by sub-reason in AC-11.
-            navigate("/access-denied", { replace: true });
+            // AC14-D7 — pass X-Auth-Reason via route state so AccessDenied
+            // can pick the right copy variant (LEVEL_ZERO vs NOT_REGISTERED).
+            const reason = err.headers?.get?.("X-Auth-Reason") ?? null;
+            navigate("/access-denied", {
+              replace: true,
+              state: { reason },
+            });
             return;
           }
           if (err.status === 502) {

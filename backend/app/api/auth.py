@@ -25,8 +25,10 @@ from app.auth.jwt_session import (
 )
 from app.auth.state_cache import OAuthStateCache, StateCacheError
 from app.core.config import Settings, get_settings
+from app.core.database import get_oracle_connection
 from app.schemas.auth import AuthorizeUrlResponse, CallbackRequest, SessionResponse
 from app.services.access_service import AccessDecision, decide_access
+from app.services.oracle_service import OracleUnavailable
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -59,14 +61,24 @@ def get_jwks_cache(settings: Settings = Depends(get_settings)) -> JWKSCache:
     return _jwks_cache
 
 
-# Indirection points so tests can inject mocks for AC-8 + AC-13 stubs (AC7-D8).
-def get_access_decider() -> Callable[[str], AccessDecision]:
+# Indirection point so tests can inject mocks (AC7-D8 + AC13-D1).
+def get_access_decider(
+    connection=Depends(get_oracle_connection),
+) -> Callable[[str], AccessDecision]:
     """FastAPI dependency returning the access-decision callable.
 
-    Production: returns the real `access_service.decide_access` (AC-13).
-    Tests: override to return a mock.
+    AC13-D1: closure binds the Oracle connection (yielded by the
+    per-request `get_oracle_connection` dependency). Keeps the endpoint's
+    decider signature `(sub) -> AccessDecision`, unchanged since AC-7.
+
+    Production: returns a closure over `decide_access` + connection.
+    Tests: override to return a mock that records its call.
     """
-    return decide_access
+
+    def _wrapped(sub: str) -> AccessDecision:
+        return decide_access(connection, sub)
+
+    return _wrapped
 
 
 def get_session_issuer(
@@ -173,6 +185,10 @@ _DETAIL_NOT_REGISTERED = (
     "Your identity has been verified but you are not registered in the "
     "FCPS procurement system. Contact your procurement coordinator."
 )
+# AC13-D6: shared with AC-6's state-cache-full 503 — single canonical copy.
+_DETAIL_SERVICE_UNAVAILABLE = (
+    "Service temporarily unavailable. Please try again shortly."
+)
 
 
 @router.post(
@@ -257,7 +273,16 @@ def complete_login(
     sub = claims["sub"]  # AC7-D11: PII; never log/return this directly.
 
     # ---- 4. Access decision (D-FD-12) ----
-    decision = access_decider(sub)
+    # AC13-D6: Oracle infrastructure failures surface as 503. The access
+    # service already logged the failure class via oracle_service; no
+    # additional logging here.
+    try:
+        decision = access_decider(sub)
+    except OracleUnavailable:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_DETAIL_SERVICE_UNAVAILABLE,
+        )
 
     if not decision.granted:
         # AC7-D9: map reason → X-Auth-Reason header value.

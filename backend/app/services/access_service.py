@@ -1,21 +1,43 @@
 """
-🟡 YELLOW ZONE — interface defined for AC-7; body to be filled in by AC-13.
+🟡 YELLOW ZONE — access decision service.
 
-Ratified decision: docs/decision-log/AC-7-callback.md (AC7-D8).
+Ratified decisions:
+    docs/decision-log/AC-13-access-service.md (AC13-D1 … AC13-D6)
+    docs/decision-log/AC-7-callback.md      (AC7-D8 — contract was fixed at AC-7)
 
-This module is the contract between AC-7 (callback) and AC-13 (access
-decision). AC-7 calls `decide_access(sub)` and receives an `AccessDecision`.
-AC-13 will implement the real Oracle STAFF lookup + decision tree
-(FUNCTIONAL_DESIGN.md §6.6).
+Decision tree per [FUNCTIONAL_DESIGN.md §6.6](../../../docs/requirements/FUNCTIONAL_DESIGN.md),
+evaluated in order:
 
-For now, the function body raises `NotImplementedError`. AC-7's tests
-inject a mock via `Depends(get_access_decider)` in
-`backend/app/api/auth.py`.
+  1. STAFF row missing            → NOT_FOUND
+  2. STAFF.IDME_VERIFIED != 'Y'   → NOT_VERIFIED
+  3. STAFF.ACTIVE != 'Y'          → INACTIVE
+  4. STAFF.PROCUREMENT_LEVEL == 0 → LEVEL_ZERO
+  5. otherwise                    → GRANTED
+
+The first three denial reasons collapse to `X-Auth-Reason: NOT_REGISTERED`
+at the router boundary (no account-existence enumeration leak — FR-03 +
+AC7-D9). LEVEL_ZERO carries its own header value.
+
+PII discipline (AC13-D4 / AC7-D11):
+- `sub` is the ID.me sub which equals `STAFF.EMPLOYEE_ID` per ADR-009 — PII.
+- Never log the raw value. Use the SHA-256-first-12 hash from
+  `oracle_service._hash_employee_id` for log correlation.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal, Optional
+
+import oracledb
+
+from app.services.oracle_service import (
+    StaffRecord,
+    _hash_employee_id,
+    get_staff_by_employee_id,
+)
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 AccessReason = Literal[
@@ -33,13 +55,12 @@ class AccessDecision:
 
     `granted=True`  → `reason="GRANTED"`; `staff_id`/`role`/`procurement_level`
                       are all populated.
-    `granted=False` → `reason` is one of the denial reasons above; the
-                      remaining fields are None.
+    `granted=False` → `reason` is one of the denial reasons; the remaining
+                      fields are None.
 
     Per AC7-D9, the AC-7 endpoint maps the reason to `X-Auth-Reason`:
       * LEVEL_ZERO → "LEVEL_ZERO"
       * NOT_FOUND / NOT_VERIFIED / INACTIVE → collapsed to "NOT_REGISTERED"
-        (no account-existence enumeration leak).
     """
 
     granted: bool
@@ -49,20 +70,52 @@ class AccessDecision:
     procurement_level: Optional[int] = None
 
 
-def decide_access(sub: str) -> AccessDecision:
+def decide_access(
+    connection: oracledb.Connection,
+    sub: str,
+) -> AccessDecision:
     """Look up the user in Oracle STAFF and decide access.
 
-    Decision tree (FUNCTIONAL_DESIGN.md §6.6), evaluated in order:
-      1. STAFF row missing            → NOT_FOUND
-      2. STAFF.IDME_VERIFIED != 'Y'   → NOT_VERIFIED
-      3. STAFF.ACTIVE != 'Y'          → INACTIVE
-      4. STAFF.PROCUREMENT_LEVEL == 0 → LEVEL_ZERO
-      5. otherwise                    → GRANTED
+    Raises:
+        OracleUnavailable: connection/network failure — caller maps to 503.
+        OracleSchemaError: row shape drift — caller propagates to 500.
 
-    To be implemented by AC-13 (Jira). The signature and dataclass are
-    contractually fixed here — AC-13 must not change them.
+    The function itself only returns `AccessDecision`; infrastructure
+    errors are propagated unchanged (AC13-D3) because they are not access
+    decisions and conflating them would mask outages as denials.
     """
-    raise NotImplementedError(
-        "access_service.decide_access is implemented by AC-13. "
-        "Tests should override the `get_access_decider` FastAPI dependency."
+    employee_id_hash = _hash_employee_id(sub)
+
+    # `sub` is treated as the STAFF.EMPLOYEE_ID per ADR-009 (ID.me sub
+    # mapping). oracle_service does the parameter-bound query.
+    staff: Optional[StaffRecord] = get_staff_by_employee_id(connection, sub)
+
+    decision = _evaluate(staff)
+
+    logger.info(
+        "access_service.decided employee_id_hash=%s reason=%s",
+        employee_id_hash,
+        decision.reason,
+    )
+    return decision
+
+
+def _evaluate(staff: Optional[StaffRecord]) -> AccessDecision:
+    """Pure decision tree — no I/O, no logging. Kept separate so tests
+    can exercise it without a mock connection if they want to.
+    """
+    if staff is None:
+        return AccessDecision(granted=False, reason="NOT_FOUND")
+    if not staff.idme_verified:
+        return AccessDecision(granted=False, reason="NOT_VERIFIED")
+    if not staff.active:
+        return AccessDecision(granted=False, reason="INACTIVE")
+    if staff.procurement_level == 0:
+        return AccessDecision(granted=False, reason="LEVEL_ZERO")
+    return AccessDecision(
+        granted=True,
+        reason="GRANTED",
+        staff_id=staff.staff_id,
+        role=staff.role,
+        procurement_level=staff.procurement_level,
     )
