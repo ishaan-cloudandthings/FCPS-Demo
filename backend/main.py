@@ -15,6 +15,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
+from app.api.procurement import router as procurement_router
 from app.core.config import get_settings
 from app.utils.logging import get_logger
 
@@ -24,6 +25,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.include_router(procurement_router)
 
 # Dev-only persona endpoint — ADR-014 (boot-time half of the DEV2 gate).
 # The router is not registered at all in non-dev environments; FastAPI

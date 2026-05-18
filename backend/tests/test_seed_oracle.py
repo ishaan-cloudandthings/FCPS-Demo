@@ -35,12 +35,15 @@ from scripts.seed_oracle import (
 def _make_connection(*, drop_raises=None) -> MagicMock:
     """Build a mock connection whose cursor is itself a MagicMock and a
     context manager. Tracks `execute` calls in order.
+
+    When `drop_raises` is set, EVERY `DROP TABLE …` execute raises that
+    error — simulates a true first-run state where neither STAFF nor
+    PROCUREMENT_ITEMS exist yet.
     """
     cursor = MagicMock(name="cursor")
     if drop_raises is not None:
-        # Only the DROP call raises; CREATE + INSERT succeed normally.
         def side_effect(sql, *args, **kwargs):
-            if sql == _DROP_TABLE_STAFF:
+            if sql.startswith("DROP TABLE"):
                 raise drop_raises
             return None
 
@@ -221,3 +224,106 @@ def test_no_seed_row_uses_a_real_looking_fcps_email():
         # Local part must NOT contain the literal "fcps" anywhere — extra
         # safety against accidental real-data shapes.
         assert "fcps" not in local.lower(), f"fcps in email local part: {email}"
+
+
+# ===========================================================================
+# AC-19 — PROCUREMENT_ITEMS seed
+# ===========================================================================
+
+from scripts.seed_oracle import (
+    _CREATE_TABLE_PROCUREMENT_ITEMS,
+    _DROP_TABLE_PROCUREMENT_ITEMS,
+    _INSERT_PROCUREMENT_ITEM,
+    _PROCUREMENT_SEED,
+    _procurement_bind_rows,
+)
+
+
+def test_procurement_seed_has_exactly_15_rows():
+    assert len(_PROCUREMENT_SEED) == 15
+
+
+def test_procurement_seed_status_breakdown_matches_data_model_8():
+    by_status = [r["status"] for r in _PROCUREMENT_SEED]
+    assert by_status.count("APPROVED") == 5
+    assert by_status.count("PENDING") == 4
+    assert by_status.count("UNDER_REVIEW") == 3
+    assert by_status.count("REJECTED") == 3
+
+
+def test_approved_at_is_set_iff_status_is_approved():
+    """AC19-D4 — APPROVED_AT non-null only for APPROVED rows."""
+    for row in _PROCUREMENT_SEED:
+        if row["status"] == "APPROVED":
+            assert row["approved_at"] is not None, row
+        else:
+            assert row["approved_at"] is None, row
+
+
+def test_procurement_create_table_includes_approved_at_excludes_bank_details():
+    sql = _CREATE_TABLE_PROCUREMENT_ITEMS
+    # ADR-006 lives:
+    assert "APPROVED_AT" in sql
+    # ADR-012 enforced:
+    assert "BANK_DETAILS" not in sql
+    # Required columns:
+    for col in [
+        "ITEM_ID", "ITEM_NAME", "VENDOR_NAME", "CATEGORY", "STATUS",
+        "UNIT_PRICE", "CONTACT_NAME", "CONTACT_EMAIL", "CREATED_DATE",
+        "UPDATED_DATE",
+    ]:
+        assert col in sql, f"missing column {col}"
+    # CHECK constraint on STATUS.
+    assert (
+        "CHECK (STATUS IN ('PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'))"
+        in sql
+    )
+
+
+def test_procurement_insert_uses_named_bind_variables():
+    sql = _INSERT_PROCUREMENT_ITEM
+    assert "{" not in sql
+    assert "%s" not in sql
+    for col in ["item_name", "vendor_name", "status", "approved_at"]:
+        assert f":{col}" in sql
+
+
+def test_procurement_emails_have_no_fcps_substring():
+    """AC19-D5 — vendor emails use @vendor.test, never anything looking
+    like real FCPS data.
+    """
+    for row in _procurement_bind_rows():
+        email = row["contact_email"]
+        assert email.endswith("@vendor.test"), email
+        assert "fcps" not in email.lower(), email
+
+
+def test_seed_runs_both_table_pipelines_in_order():
+    """AC19-D7 — seed() drops/creates/inserts STAFF, then drops/creates/
+    inserts PROCUREMENT_ITEMS, then commits once.
+    """
+    conn = _make_connection()
+    seed(conn)
+
+    executed_sqls = [call.args[0] for call in conn._cursor.execute.call_args_list]
+
+    # Expected sequence of *distinct* SQL statements:
+    seq = [
+        s for s in executed_sqls
+        if s in {
+            _DROP_TABLE_STAFF,
+            _CREATE_TABLE_STAFF,
+            _DROP_TABLE_PROCUREMENT_ITEMS,
+            _CREATE_TABLE_PROCUREMENT_ITEMS,
+        }
+    ]
+    assert seq == [
+        _DROP_TABLE_STAFF,
+        _CREATE_TABLE_STAFF,
+        _DROP_TABLE_PROCUREMENT_ITEMS,
+        _CREATE_TABLE_PROCUREMENT_ITEMS,
+    ]
+    # 10 STAFF + 15 PROC inserts.
+    assert executed_sqls.count(_INSERT_STAFF) == 10
+    assert executed_sqls.count(_INSERT_PROCUREMENT_ITEM) == 15
+    conn.commit.assert_called_once()

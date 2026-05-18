@@ -235,3 +235,229 @@ def test_employee_id_hash_appears_in_log_line(caplog):
     expected_hash = hashlib.sha256(b"FCPS-001").hexdigest()[:12]
     assert f"employee_id_hash={expected_hash}" in caplog.text
     assert "outcome=found" in caplog.text
+
+
+# ===========================================================================
+# AC-16 — PROCUREMENT_ITEMS queries
+# ===========================================================================
+
+from datetime import date, datetime
+
+from app.services.oracle_service import (
+    VendorRow,
+    _BASE_COLS,
+    _DETAIL_EXTRA_COLS,
+    _SELECT_VENDOR_BY_ID,
+    _list_vendors_sql,
+    get_vendor_by_id,
+    list_vendors,
+)
+
+
+# ---------------------------------------------------------------------------
+# SQL composition (AC16-D3)
+# ---------------------------------------------------------------------------
+
+
+def test_list_sql_l1_shape_has_no_status_no_contact_no_approved_filter():
+    sql, cols = _list_vendors_sql(
+        only_approved=False, include_contact=False, include_status=False
+    )
+    assert "STATUS" not in cols
+    assert "CONTACT_NAME" not in cols
+    assert "WHERE" not in sql
+    assert "BANK_DETAILS" not in sql
+    assert "CONTACT_EMAIL" not in sql
+
+
+def test_list_sql_l2_shape_adds_contact_name_filters_approved():
+    sql, cols = _list_vendors_sql(
+        only_approved=True, include_contact=True, include_status=False
+    )
+    assert "CONTACT_NAME" in cols
+    assert "STATUS" not in cols
+    assert "WHERE STATUS = 'APPROVED'" in sql
+    assert "CONTACT_EMAIL" not in sql
+
+
+def test_list_sql_admin_shape_has_status_and_unit_price_no_filter():
+    sql, cols = _list_vendors_sql(
+        only_approved=False, include_contact=True, include_status=True
+    )
+    assert "STATUS" in cols
+    assert "UNIT_PRICE" in cols
+    assert "CONTACT_NAME" in cols
+    assert "WHERE" not in sql                       # admin sees all statuses
+    assert "BANK_DETAILS" not in sql
+
+
+def test_list_sql_never_contains_bank_details_or_contact_email():
+    """ADR-012 / ADR-013 — across all 8 flag combinations."""
+    for only_approved in (False, True):
+        for include_contact in (False, True):
+            for include_status in (False, True):
+                sql, _ = _list_vendors_sql(
+                    only_approved=only_approved,
+                    include_contact=include_contact,
+                    include_status=include_status,
+                )
+                assert "BANK_DETAILS" not in sql
+                assert "CONTACT_EMAIL" not in sql
+
+
+def test_detail_sql_includes_contact_email_and_approved_at():
+    assert "CONTACT_EMAIL" in _SELECT_VENDOR_BY_ID
+    assert "APPROVED_AT" in _SELECT_VENDOR_BY_ID
+    # Parameter binding, no f-strings:
+    assert ":item_id" in _SELECT_VENDOR_BY_ID
+    assert "BANK_DETAILS" not in _SELECT_VENDOR_BY_ID
+
+
+# ---------------------------------------------------------------------------
+# Row mapping
+# ---------------------------------------------------------------------------
+
+
+def _make_cursor(rows):
+    cursor = MagicMock(name="cursor")
+    if isinstance(rows, list):
+        cursor.fetchall.return_value = rows
+        cursor.fetchone.return_value = rows[0] if rows else None
+    else:
+        cursor.fetchone.return_value = rows
+    cursor_ctx = MagicMock()
+    cursor_ctx.__enter__.return_value = cursor
+    cursor_ctx.__exit__.return_value = False
+    return cursor, cursor_ctx
+
+
+def _conn_with_rows(rows):
+    cursor, cursor_ctx = _make_cursor(rows)
+    conn = MagicMock(name="connection")
+    conn.cursor.return_value = cursor_ctx
+    conn._cursor = cursor
+    return conn
+
+
+def test_list_vendors_admin_variant_maps_full_row():
+    # cols order: ITEM_ID, VENDOR_NAME, ITEM_NAME, CATEGORY, CONTACT_NAME, STATUS, UNIT_PRICE
+    rows = [
+        (1, "Acme", "Widget", "Supplies", "Alice Vendor", "APPROVED", 9.99),
+        (2, "Globex", "Gadget", "Technology", None, "PENDING", None),
+    ]
+    conn = _conn_with_rows(rows)
+    result = list_vendors(
+        conn,
+        only_approved=False,
+        include_contact=True,
+        include_status=True,
+        variant_tag="admin",
+    )
+    assert len(result) == 2
+    assert result[0] == VendorRow(
+        variant_tag="admin",
+        item_id=1,
+        vendor_name="Acme",
+        item_name="Widget",
+        category="Supplies",
+        contact_name="Alice Vendor",
+        status="APPROVED",
+        unit_price=9.99,
+    )
+    assert result[1].contact_name is None
+    assert result[1].unit_price is None
+
+
+def test_list_vendors_l1_variant_omits_status_and_contact():
+    rows = [(1, "Acme", "Widget", "Supplies")]
+    conn = _conn_with_rows(rows)
+    result = list_vendors(
+        conn,
+        only_approved=True,
+        include_contact=False,
+        include_status=False,
+        variant_tag="staff_l1",
+    )
+    assert result[0].status is None
+    assert result[0].contact_name is None
+
+
+def test_list_vendors_rejects_unknown_status():
+    rows = [(1, "Acme", "Widget", "Supplies", "Alice", "DRAFT", 1.0)]
+    conn = _conn_with_rows(rows)
+    with pytest.raises(OracleSchemaError):
+        list_vendors(
+            conn,
+            only_approved=False,
+            include_contact=True,
+            include_status=True,
+            variant_tag="admin",
+        )
+
+
+def test_list_vendors_rejects_invalid_variant_tag():
+    conn = _conn_with_rows([])
+    with pytest.raises(ValueError):
+        list_vendors(
+            conn,
+            only_approved=False,
+            include_contact=False,
+            include_status=False,
+            variant_tag="superadmin",  # type: ignore[arg-type]
+        )
+
+
+def test_list_vendors_propagates_oracle_unavailable():
+    cursor, cursor_ctx = _make_cursor([])
+    cursor.execute.side_effect = oracledb.DatabaseError("simulated")
+    conn = MagicMock(name="connection")
+    conn.cursor.return_value = cursor_ctx
+
+    with pytest.raises(OracleUnavailable):
+        list_vendors(
+            conn,
+            only_approved=False,
+            include_contact=False,
+            include_status=False,
+            variant_tag="staff_l1",
+        )
+
+
+def test_get_vendor_by_id_returns_full_detail_row():
+    cd = datetime(2026, 1, 1, 9, 0, 0)
+    ud = datetime(2026, 2, 14, 10, 30, 0)
+    ad = date(2026, 2, 14)
+    row = (
+        7, "Acme", "Widget", "Supplies",       # base cols
+        "APPROVED", 9.99, "Alice Vendor",
+        "alice@vendor.test", ad, cd, ud,
+    )
+    conn = _conn_with_rows(row)
+
+    result = get_vendor_by_id(conn, 7)
+    assert result is not None
+    assert result.variant_tag == "admin_detail"
+    assert result.item_id == 7
+    assert result.contact_email == "alice@vendor.test"
+    assert result.approved_at == ad
+    assert result.created_date == cd
+    assert result.updated_date == ud
+    # Verify parameter binding used :item_id
+    conn._cursor.execute.assert_called_once_with(
+        _SELECT_VENDOR_BY_ID, {"item_id": 7}
+    )
+
+
+def test_get_vendor_by_id_returns_none_when_missing():
+    conn = _conn_with_rows(None)
+    assert get_vendor_by_id(conn, 999) is None
+
+
+def test_get_vendor_by_id_propagates_oracle_unavailable():
+    cursor, cursor_ctx = _make_cursor(None)
+    cursor.execute.side_effect = oracledb.DatabaseError("simulated")
+    conn = MagicMock(name="connection")
+    conn.cursor.return_value = cursor_ctx
+
+    with pytest.raises(OracleUnavailable):
+        get_vendor_by_id(conn, 1)

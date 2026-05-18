@@ -10,9 +10,11 @@
  */
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap.js";
 import { AccessDenied } from "./pages/AccessDenied.jsx";
 import { Login } from "./pages/Login.jsx";
+import { VendorDetail } from "./pages/VendorDetail.jsx";
 import { VendorList } from "./pages/VendorList.jsx";
 import { VerificationCallback } from "./pages/VerificationCallback.jsx";
 
@@ -24,7 +26,22 @@ export function App() {
       <Route path="/" element={<Login />} />
       <Route path="/verification/callback" element={<VerificationCallback />} />
       <Route path="/access-denied" element={<AccessDenied />} />
-      <Route path="/vendors" element={<VendorList />} />
+      <Route
+        path="/vendors"
+        element={
+          <ProtectedRoute>
+            <VendorList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vendors/:item_id"
+        element={
+          <ProtectedRoute>
+            <VendorDetail />
+          </ProtectedRoute>
+        }
+      />
       {/* Unknown path → land on Login. */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
