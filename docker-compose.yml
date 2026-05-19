@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fcps-procurement-backend
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: prod
+      LOG_LEVEL: INFO
+      IDME_CLIENT_ID: ${IDME_CLIENT_ID}
+      IDME_CLIENT_SECRET: ${IDME_CLIENT_SECRET}
+      IDME_AUTHORIZE_URL: https://api.id.me/oauth/authorize
+      IDME_TOKEN_URL: https://api.id.me/oauth/token
+      IDME_JWKS_URL: https://api.id.me/.well-known/jwks.json
+      IDME_ISSUER: https://api.id.me
+      IDME_REDIRECT_URI: ${IDME_REDIRECT_URI}
+      IDME_SCOPE: openid email
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_TTL_HOURS: 4
+      JWT_COOKIE_SECURE: "true"
+      ORACLE_HOST: ${ORACLE_HOST}
+      ORACLE_PORT: ${ORACLE_PORT}
+      ORACLE_SERVICE_NAME: ${ORACLE_SERVICE_NAME}
+      ORACLE_USER: ${ORACLE_USER}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fcps-procurement-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: http://backend:8000
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+networks:
+  default:
+    name: fcps-network
