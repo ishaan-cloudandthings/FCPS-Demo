@@ -43,3 +43,12 @@ demoting an over-formal ADR is awkward.
 | [AC-12-seed-staff.md](./AC-12-seed-staff.md) | Green Zone decisions for story AC-12 (seed_oracle.py STAFF schema + 10 records) + dev_auth staff_id realignment | 2026-05-18 |
 | [AC-13-access-service.md](./AC-13-access-service.md) | Yellow Zone decisions for story AC-13 (decide_access decision tree + OracleUnavailable → 503) | 2026-05-18 |
 | [AC-14-access-denied.md](./AC-14-access-denied.md) | Yellow Zone decisions for story AC-14 (frontend AccessDenied page + X-Auth-Reason → route state) | 2026-05-18 |
+| [AC-15-vendor-schemas.md](./AC-15-vendor-schemas.md) | Green Zone decisions for story AC-15 (per-level Pydantic vendor schemas) | 2026-05-18 |
+| [AC-16-procurement-queries.md](./AC-16-procurement-queries.md) | Yellow Zone decisions for story AC-16 (`list_vendors` + `get_vendor_by_id`) | 2026-05-18 |
+| [AC-18-procurement-router.md](./AC-18-procurement-router.md) | Yellow Zone decisions for story AC-18 (procurement router; list + detail, auth-only) | 2026-05-18 |
+| [AC-19-seed-procurement-items.md](./AC-19-seed-procurement-items.md) | Green Zone decisions for story AC-19 (PROCUREMENT_ITEMS seed + APPROVED_AT) | 2026-05-18 |
+| [AC-20-frontend-foundations.md](./AC-20-frontend-foundations.md) | Yellow Zone decisions for story AC-20 (ProtectedRoute + authenticated AppHeader) | 2026-05-18 |
+| [AC-21-reusable-components.md](./AC-21-reusable-components.md) | Green Zone decisions for story AC-21 (VendorTable + 4 supporting components) | 2026-05-18 |
+| [AC-22-vendor-pages.md](./AC-22-vendor-pages.md) | Yellow Zone decisions for story AC-22 (frontend vendor list + detail pages) | 2026-05-18 |
+| [demo-zero-config-boot.md](./demo-zero-config-boot.md) | Zero-config boot posture: built-in demo defaults in Settings + non-dev guard | 2026-05-19 |
+| [demo-inmem-vendor-fallback.md](./demo-inmem-vendor-fallback.md) | Dev-only in-memory fallback for `/api/vendors*` when Oracle is unreachable | 2026-05-19 |

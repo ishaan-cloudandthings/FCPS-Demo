@@ -1,0 +1,38 @@
+# --- Secrets ---------------------------------------------------------------
+# `.env` may contain ID.me sandbox creds, JWT secrets, Oracle credentials,
+# etc. Real values must NEVER be committed. The template lives in
+# `backend/.env.example`.
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# --- Node / Vite ----------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+coverage/
+*.local
+
+# --- macOS / IDE ----------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

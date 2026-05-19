@@ -39,6 +39,16 @@ if _settings.environment == "dev":
 
 logger = get_logger(__name__)
 
+# Loud warning when the built-in demo JWT secret is in force. The
+# `Settings._refuse_demo_defaults_outside_dev` validator means we can
+# only get here in `dev`, but we still want it on stdout for any
+# operator who tails the log.
+if _settings.is_using_demo_jwt_secret():
+    logger.warning(
+        "DEMO_BOOT: using built-in demo JWT_SECRET_KEY. "
+        "Fine for local demo — DO NOT promote this build to any non-dev environment."
+    )
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):

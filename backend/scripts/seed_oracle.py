@@ -218,167 +218,42 @@ def _bind_rows() -> list[dict[str, object]]:
 
 # ---------------------------------------------------------------------------
 # AC-19 — PROCUREMENT_ITEMS seed (15 rows per DATA_MODEL.md §8)
+#
+# Canonical 15-row list lives in `app/services/demo_vendor_data.py` so the
+# in-memory demo fallback in `app/api/procurement.py` reads from the same
+# source. `_PROCUREMENT_SEED` is re-derived here in the Oracle INSERT
+# shape (approved_at: datetime, not date) and kept under the same name
+# the existing test suite imports.
 # ---------------------------------------------------------------------------
 
-from datetime import datetime, timezone  # noqa: E402  — keep PROCUREMENT seed self-contained
+from app.services.demo_vendor_data import (  # noqa: E402  — keep with seed block
+    VENDOR_SEED_ENTRIES,
+    seed_timestamp,
+    vendor_email_for,
+)
 
 
 def _vendor_email(contact_name: str, vendor_name: str) -> str:
-    """`firstname.lastname@vendor.test`. Distinct from staff `@test.com`
-    so a reader can tell vendor PII apart from staff PII at a glance.
+    """Back-compat alias (older tests import via this name). Delegates to
+    the canonical `vendor_email_for`.
     """
-    parts = contact_name.lower().split()
-    return f"{parts[0]}.{parts[-1]}@vendor.test"
+    return vendor_email_for(contact_name)
 
 
-def _approved(year: int, month: int, day: int) -> datetime:
-    """Helper for ADR-006 APPROVED_AT timestamps. UTC, midday for clarity."""
-    return datetime(year, month, day, 12, 0, 0, tzinfo=timezone.utc)
-
-
-# 15 rows: 5 APPROVED, 4 PENDING, 3 UNDER_REVIEW, 3 REJECTED.
-# Categories: Technology / Facilities / Supplies / Services / Furniture.
-# APPROVED_AT is non-null only for APPROVED rows (AC19-D4).
+# AC19-D4: APPROVED_AT is non-null only for APPROVED rows; that invariant
+# is baked into VENDOR_SEED_ENTRIES, so this just wraps date → datetime.
 _PROCUREMENT_SEED: list[dict[str, object]] = [
-    # --- 5 APPROVED -----------------------------------------------------
-    dict(
-        item_name="Classroom laptops (15-pack)",
-        vendor_name="Northstar Computing",
-        category="Technology",
-        status="APPROVED",
-        unit_price=8499.00,
-        contact_name="Alice Reyes",
-        approved_at=_approved(2026, 1, 12),
-    ),
-    dict(
-        item_name="HVAC quarterly service",
-        vendor_name="MetroAir Facilities",
-        category="Facilities",
-        status="APPROVED",
-        unit_price=2250.00,
-        contact_name="Benjamin Park",
-        approved_at=_approved(2026, 1, 22),
-    ),
-    dict(
-        item_name="A4 copier paper, 50 cases",
-        vendor_name="Statewide Office Supply",
-        category="Supplies",
-        status="APPROVED",
-        unit_price=1199.50,
-        contact_name="Cora Williams",
-        approved_at=_approved(2026, 2, 3),
-    ),
-    dict(
-        item_name="On-site IT support contract",
-        vendor_name="BlueRidge IT Services",
-        category="Services",
-        status="APPROVED",
-        unit_price=14500.00,
-        contact_name="Devon Chen",
-        approved_at=_approved(2026, 2, 14),
-    ),
-    dict(
-        item_name="Library reading tables (8)",
-        vendor_name="Heritage Furniture Co.",
-        category="Furniture",
-        status="APPROVED",
-        unit_price=4200.00,
-        contact_name="Elena Rossi",
-        approved_at=_approved(2026, 3, 4),
-    ),
-    # --- 4 PENDING ------------------------------------------------------
-    dict(
-        item_name="Interactive whiteboards (5)",
-        vendor_name="Northstar Computing",
-        category="Technology",
-        status="PENDING",
-        unit_price=3199.00,
-        contact_name="Alice Reyes",
-        approved_at=None,
-    ),
-    dict(
-        item_name="Cafeteria fridge replacement",
-        vendor_name="MetroAir Facilities",
-        category="Facilities",
-        status="PENDING",
-        unit_price=5475.00,
-        contact_name="Benjamin Park",
-        approved_at=None,
-    ),
-    dict(
-        item_name="Cleaning supplies, annual",
-        vendor_name="Statewide Office Supply",
-        category="Supplies",
-        status="PENDING",
-        unit_price=8200.00,
-        contact_name="Cora Williams",
-        approved_at=None,
-    ),
-    dict(
-        item_name="Network security audit",
-        vendor_name="BlueRidge IT Services",
-        category="Services",
-        status="PENDING",
-        unit_price=6800.00,
-        contact_name="Devon Chen",
-        approved_at=None,
-    ),
-    # --- 3 UNDER_REVIEW -------------------------------------------------
-    dict(
-        item_name="Science-lab stools (40)",
-        vendor_name="Heritage Furniture Co.",
-        category="Furniture",
-        status="UNDER_REVIEW",
-        unit_price=2200.00,
-        contact_name="Elena Rossi",
-        approved_at=None,
-    ),
-    dict(
-        item_name="Cafeteria food-service supplies",
-        vendor_name="GreenLeaf Food Distributors",
-        category="Supplies",
-        status="UNDER_REVIEW",
-        unit_price=12300.00,
-        contact_name="Farhan Ahmed",
-        approved_at=None,
-    ),
-    dict(
-        item_name="District-wide tablet refresh",
-        vendor_name="Northstar Computing",
-        category="Technology",
-        status="UNDER_REVIEW",
-        unit_price=42600.00,
-        contact_name="Alice Reyes",
-        approved_at=None,
-    ),
-    # --- 3 REJECTED -----------------------------------------------------
-    dict(
-        item_name="Outdated software licences",
-        vendor_name="Legacy Systems LLC",
-        category="Technology",
-        status="REJECTED",
-        unit_price=995.00,
-        contact_name="Grace Tan",
-        approved_at=None,
-    ),
-    dict(
-        item_name="Parking-lot resealing (unverified vendor)",
-        vendor_name="QuickFix Asphalt",
-        category="Facilities",
-        status="REJECTED",
-        unit_price=7800.00,
-        contact_name="Hugo Martinez",
-        approved_at=None,
-    ),
-    dict(
-        item_name="Bulk binder order (overcosted)",
-        vendor_name="Statewide Office Supply",
-        category="Supplies",
-        status="REJECTED",
-        unit_price=4500.00,
-        contact_name="Cora Williams",
-        approved_at=None,
-    ),
+    {
+        "item_name": entry["item_name"],
+        "vendor_name": entry["vendor_name"],
+        "category": entry["category"],
+        "status": entry["status"],
+        "unit_price": entry["unit_price"],
+        "contact_name": entry["contact_name"],
+        # Oracle column is TIMESTAMP WITH TIME ZONE — wrap date → datetime.
+        "approved_at": seed_timestamp(entry["approved_at"]),  # type: ignore[arg-type]
+    }
+    for entry in VENDOR_SEED_ENTRIES
 ]
 
 

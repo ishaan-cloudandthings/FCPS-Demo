@@ -1,7 +1,9 @@
 """
 🟡 YELLOW ZONE — procurement router.
 
-Ratified decisions: docs/decision-log/AC-18-procurement-router.md.
+Ratified decisions:
+    docs/decision-log/AC-18-procurement-router.md
+    docs/decision-log/demo-inmem-vendor-fallback.md (DEMO-VENDOR-*)
 
 Endpoints:
 
@@ -14,21 +16,34 @@ filtering, admin-only detail) is intentionally deferred to AC-17 — the
 single point of change in this file will be:
 
 * import `rbac_service`
-* replace the hardcoded `params_for_admin()` call with
+* replace the hardcoded `_params_for_admin()` call with
   `rbac_service.params_for(claims.role, claims.procurement_level)`
 * optionally add `Depends(require_role("ADMIN"))` to the detail handler
 
 See `# TODO(AC-17)` markers below.
+
+Dev fallback (DEMO-VENDOR-*): when `ENVIRONMENT=dev` and Oracle is not
+reachable, both endpoints serve in-memory data from
+`app.services.demo_vendor_data`. The fallback is silently skipped in
+non-dev environments — those return 503 as before.
 """
 from __future__ import annotations
 
+from typing import Optional
+
+import oracledb
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.auth import _DETAIL_SERVICE_UNAVAILABLE
 from app.auth.dependencies import require_authenticated
 from app.auth.jwt_session import SessionClaims
+from app.core.config import Settings, get_settings
 from app.core.database import get_oracle_connection
 from app.schemas.vendors import VendorDetail, VendorListItemAdmin
+from app.services.demo_vendor_data import (
+    DEMO_VENDOR_ROWS,
+    get_demo_vendor_by_id,
+)
 from app.services.oracle_service import (
     OracleUnavailable,
     VendorRow,
@@ -60,7 +75,6 @@ def _params_for_admin() -> dict:
 
 
 def _vendor_row_to_admin_list_item(row: VendorRow) -> VendorListItemAdmin:
-    # By construction the variant_tag is "admin" — see _params_for_admin().
     return VendorListItemAdmin(
         item_id=row.item_id,
         vendor_name=row.vendor_name,
@@ -88,6 +102,10 @@ def _vendor_row_to_detail(row: VendorRow) -> VendorDetail:
     )
 
 
+def _is_dev(settings: Settings) -> bool:
+    return settings.environment == "dev"
+
+
 @router.get(
     "",
     response_model=list[VendorListItemAdmin],
@@ -95,17 +113,37 @@ def _vendor_row_to_detail(row: VendorRow) -> VendorDetail:
 )
 def list_vendors_endpoint(
     claims: SessionClaims = Depends(require_authenticated),  # noqa: ARG001 — TODO(AC-17)
-    connection=Depends(get_oracle_connection),
+    connection: Optional[oracledb.Connection] = Depends(get_oracle_connection),
+    settings: Settings = Depends(get_settings),
 ) -> list[VendorListItemAdmin]:
-    """List vendors. AC-18 returns the full admin shape to every
-    authenticated caller. AC-17 will narrow the response per claims.
+    """List vendors. Today returns the admin shape to every authenticated
+    caller. AC-17 will narrow the response per claims.
+
+    In dev: if Oracle is unreachable (connection is None, or
+    OracleUnavailable raised during query), serve in-memory demo data.
     """
     # TODO(AC-17): swap to `rbac_service.params_for(claims.role, claims.procurement_level)`.
     params = _params_for_admin()
 
+    if connection is None:
+        # Dev-mode fallback: connection failed at boot, demo data served instead.
+        rows = DEMO_VENDOR_ROWS
+        logger.info(
+            "procurement.list count=%d DEMO_FALLBACK source=no_connection",
+            len(rows),
+        )
+        return [_vendor_row_to_admin_list_item(r) for r in rows]
+
     try:
         rows = list_vendors(connection, **params)
     except OracleUnavailable:
+        if _is_dev(settings):
+            rows = DEMO_VENDOR_ROWS
+            logger.info(
+                "procurement.list count=%d DEMO_FALLBACK source=query_failed",
+                len(rows),
+            )
+            return [_vendor_row_to_admin_list_item(r) for r in rows]
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=_DETAIL_SERVICE_UNAVAILABLE,
@@ -123,14 +161,47 @@ def list_vendors_endpoint(
 def get_vendor_endpoint(
     item_id: int,
     claims: SessionClaims = Depends(require_authenticated),  # noqa: ARG001 — TODO(AC-17)
-    connection=Depends(get_oracle_connection),
+    connection: Optional[oracledb.Connection] = Depends(get_oracle_connection),
+    settings: Settings = Depends(get_settings),
 ) -> VendorDetail:
     """Vendor detail. AC-18 allows every authenticated caller. AC-17 will
     additionally require ADMIN via `Depends(require_role("ADMIN"))`.
+
+    Dev fallback: if Oracle is unreachable, look up in the in-memory
+    demo set.
     """
+    if connection is None:
+        row = get_demo_vendor_by_id(item_id)
+        if row is None:
+            logger.info(
+                "procurement.detail item_id=%d outcome=not_found DEMO_FALLBACK",
+                item_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=_DETAIL_NOT_FOUND,
+            )
+        logger.info(
+            "procurement.detail item_id=%d outcome=found DEMO_FALLBACK",
+            item_id,
+        )
+        return _vendor_row_to_detail(row)
+
     try:
         row = get_vendor_by_id(connection, item_id)
     except OracleUnavailable:
+        if _is_dev(settings):
+            row = get_demo_vendor_by_id(item_id)
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=_DETAIL_NOT_FOUND,
+                )
+            logger.info(
+                "procurement.detail item_id=%d outcome=found DEMO_FALLBACK",
+                item_id,
+            )
+            return _vendor_row_to_detail(row)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=_DETAIL_SERVICE_UNAVAILABLE,
