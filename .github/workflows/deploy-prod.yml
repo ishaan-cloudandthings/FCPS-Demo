@@ -1,10 +1,9 @@
-name: Deploy prod to EC2
+name: Deploy to EC2
 
 on:
   push:
     branches:
       - prod
-
   workflow_dispatch:
 
 jobs:
@@ -12,12 +11,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy on EC2
+      - name: Check required secrets
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          test -n "$EC2_HOST" || { echo "EC2_HOST is missing"; exit 1; }
+          test -n "$EC2_USER" || { echo "EC2_USER is missing"; exit 1; }
+          test -n "$EC2_SSH_KEY" || { echo "EC2_SSH_KEY is missing"; exit 1; }
+          echo "Secrets are present"
+
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
           script: |
             set -e
 
