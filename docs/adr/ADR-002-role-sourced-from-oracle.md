@@ -19,9 +19,9 @@ The portal has two distinct authorisation outcomes:
 
 ID.me, the identity provider, can in principle carry custom claims (such as
 "role") inside the ID token. The alternative is to use ID.me purely for
-identity assertion and look up role from a system controlled by FCPS.
+identity assertion and look up role from a system controlled by Staff Procurement Portal.
 
-FCPS HR data — including which staff are procurement coordinators — already
+Staff Procurement Portal HR data — including which staff are procurement coordinators — already
 lives in the Oracle `STAFF` table. That table is the source of truth for
 employment status, role, and procurement clearance level.
 
@@ -34,9 +34,9 @@ the role claim populated from the Oracle lookup, not from any ID.me claim.
 
 ## Rationale
 
-- FCPS HR data lives in Oracle. Oracle is the authoritative source for role
+- Staff Procurement Portal HR data lives in Oracle. Oracle is the authoritative source for role
   and clearance.
-- Embedding role in ID.me claims would require FCPS to manage claims — out
+- Embedding role in ID.me claims would require Staff Procurement Portal to manage claims — out
   of scope.
 - Separation of concerns: ID.me answers "who are you?", Oracle answers
   "what can you do?".
@@ -45,7 +45,7 @@ the role claim populated from the Oracle lookup, not from any ID.me claim.
 
 **Positive**
 
-- Authorisation decisions follow the FCPS source of truth. Role changes in
+- Authorisation decisions follow the Staff Procurement Portal source of truth. Role changes in
   Oracle take effect on the next login without any ID.me coordination.
 - ID.me integration stays minimal — `openid email` scope is sufficient; no
   custom claim mapping required.

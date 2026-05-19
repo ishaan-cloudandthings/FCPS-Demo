@@ -1,4 +1,4 @@
-# DATA_MODEL.md — FCPS Procurement Portal
+# DATA_MODEL.md — Staff Procurement Portal
 
 > **Reference document.** Do not modify without explicit instruction and a corresponding ADR.
 > All Oracle queries, Pydantic schemas, and API responses must conform to this model.
@@ -47,8 +47,9 @@
 │ EMAIL                [PII]          │
 │ DEPARTMENT                          │
 │ JOB_TITLE                           │
-│ PROCUREMENT_LEVEL (0–3)             │
-│ ROLE (ADMIN | STAFF)                │
+│ ROLE                                │
+│  (PROCUREMENT_SUPERVISOR            │
+│   | REGULAR_STAFF | NON_STAFF)      │
 │ IDME_VERIFIED (Y | N)               │
 │ ACTIVE (Y | N)                      │
 │ CREATED_DATE                        │
@@ -79,27 +80,27 @@
 
 ### StaffRole
 
-```
-ADMIN   — Procurement coordinator. Sees all PROCUREMENT_ITEMS regardless of status.
-STAFF   — Teacher / regular employee. Sees APPROVED items only.
-```
-
-### ProcurementLevel
+Per [ADR-015](adr/ADR-015-role-model-simplification.md):
 
 ```
-0 — No procurement access. Access denied regardless of ID.me verification.
-1 — Basic access. Minimum level for access granted.
-2 — Standard access. Can view vendor contact details.
-3 — Full access. Can view all fields including bank details.
+PROCUREMENT_SUPERVISOR — Procurement coordinator. Sees all PROCUREMENT_ITEMS
+                        regardless of status. Holds documented authority to
+                        add / update / delete vendor records (CRUD endpoints
+                        are a future story per ADR-015).
+REGULAR_STAFF          — Teacher / general employee. Read access; sees
+                        APPROVED vendors only.
+NON_STAFF              — Person exists in STAFF but has no portal access.
+                        Denied at /api/auth/callback with
+                        `X-Auth-Reason: NON_STAFF`.
 ```
 
 ### ProcurementStatus
 
 ```
-PENDING      — Submitted, awaiting review. Visible to ADMIN only.
-UNDER_REVIEW — Being assessed. Visible to ADMIN only.
-APPROVED     — Cleared for procurement. Visible to ADMIN and STAFF.
-REJECTED     — Not approved. Visible to ADMIN only.
+PENDING      — Submitted, awaiting review. Visible to PROCUREMENT_SUPERVISOR only.
+UNDER_REVIEW — Being assessed. Visible to PROCUREMENT_SUPERVISOR only.
+APPROVED     — Cleared for procurement. Visible to PROCUREMENT_SUPERVISOR and REGULAR_STAFF.
+REJECTED     — Not approved. Visible to PROCUREMENT_SUPERVISOR only.
 ```
 
 ---
@@ -112,16 +113,20 @@ REJECTED     — Not approved. Visible to ADMIN only.
 > reads or returns these fields, AI must confirm data handling decisions with the human
 > before generating. Applies in all zones.
 
+> Per [ADR-015](adr/ADR-015-role-model-simplification.md) (2026-05-19):
+> `PROCUREMENT_LEVEL` is **removed**; `ROLE` is the single authority
+> field with three values (`PROCUREMENT_SUPERVISOR`, `REGULAR_STAFF`,
+> `NON_STAFF`).
+
 | Column             | Type                      | Nullable | Notes                                      |
 |--------------------|---------------------------|----------|--------------------------------------------|
 | STAFF_ID           | NUMBER (PK, IDENTITY)     | NO       | Auto-increment primary key                 |
-| EMPLOYEE_ID        | VARCHAR2(20)              | NO       | Unique. FCPS employee identifier. PII.     |
+| EMPLOYEE_ID        | VARCHAR2(20)              | NO       | Unique. employee identifier. PII.     |
 | FULL_NAME          | VARCHAR2(255)             | NO       | Legal full name. PII.                      |
 | EMAIL              | VARCHAR2(255)             | NO       | Work email. Unique. PII.                   |
 | DEPARTMENT         | VARCHAR2(100)             | NO       | e.g. Mathematics, Administration           |
 | JOB_TITLE          | VARCHAR2(100)             | NO       | e.g. Teacher, Principal, Coordinator       |
-| PROCUREMENT_LEVEL  | NUMBER(1)                 | NO       | 0–3. Controls access decision.             |
-| ROLE               | VARCHAR2(10)              | NO       | ADMIN or STAFF.                            |
+| ROLE               | VARCHAR2(25)              | NO       | `PROCUREMENT_SUPERVISOR`, `REGULAR_STAFF`, or `NON_STAFF` (ADR-015). |
 | IDME_VERIFIED      | CHAR(1)                   | NO       | Y or N. Updated after ID.me callback.      |
 | ACTIVE             | CHAR(1)                   | NO       | Y or N. Inactive staff denied access.      |
 | CREATED_DATE       | TIMESTAMP WITH TIME ZONE  | NO       | UTC. Set on insert.                        |
@@ -165,8 +170,7 @@ REJECTED     — Not approved. Visible to ADMIN only.
 
 | Table             | Constraint              | Rule                                                  |
 |-------------------|-------------------------|-------------------------------------------------------|
-| STAFF             | CHK_ROLE                | ROLE IN ('ADMIN', 'STAFF')                            |
-| STAFF             | CHK_PROC_LEVEL          | PROCUREMENT_LEVEL BETWEEN 0 AND 3                     |
+| STAFF             | CHK_ROLE                | ROLE IN ('PROCUREMENT_SUPERVISOR', 'REGULAR_STAFF', 'NON_STAFF') |
 | STAFF             | CHK_VERIFIED            | IDME_VERIFIED IN ('Y', 'N')                           |
 | STAFF             | CHK_ACTIVE              | ACTIVE IN ('Y', 'N')                                  |
 | PROCUREMENT_ITEMS | CHK_STATUS              | STATUS IN ('PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED') |
@@ -181,9 +185,9 @@ REJECTED     — Not approved. Visible to ADMIN only.
 | STAFF             | EMPLOYEE_ID    | Identifier            | Never logged. Not in list responses.             |
 | STAFF             | FULL_NAME      | Personal identity     | Never logged. Scoped to owning user.             |
 | STAFF             | EMAIL          | Contact identifier    | Never logged. Not in list responses.             |
-| PROCUREMENT_ITEMS | CONTACT_NAME   | Personal identity     | Returned for PROCUREMENT_LEVEL >= 2 only.        |
-| PROCUREMENT_ITEMS | CONTACT_EMAIL  | Contact identifier    | Returned for PROCUREMENT_LEVEL >= 2 only.        |
-| PROCUREMENT_ITEMS | BANK_DETAILS   | Financial (sensitive) | Returned for PROCUREMENT_LEVEL = 3 (Admin) only. |
+| PROCUREMENT_ITEMS | CONTACT_NAME   | Personal identity     | Returned to authenticated readers (today every authenticated session). Future per-role narrowing tracked in ADR-015 follow-ups. |
+| PROCUREMENT_ITEMS | CONTACT_EMAIL  | Contact identifier    | Detail-only per ADR-013 — only `GET /api/vendors/{id}` returns it. |
+| PROCUREMENT_ITEMS | BANK_DETAILS   | Financial (sensitive) | Out of scope entirely per ADR-012 — column removed. |
 
 ---
 
@@ -191,26 +195,26 @@ REJECTED     — Not approved. Visible to ADMIN only.
 
 ### STAFF (10 records)
 
-| EMPLOYEE_ID | FULL_NAME           | DEPARTMENT      | JOB_TITLE              | LEVEL | ROLE  |
-|-------------|---------------------|-----------------|------------------------|-------|-------|
-| FCPS-001    | Sarah Mitchell      | Administration  | Procurement Coordinator| 3     | ADMIN |
-| FCPS-002    | James Okafor        | Administration  | Procurement Coordinator| 3     | ADMIN |
-| FCPS-003    | Linda Nguyen        | Mathematics     | Teacher                | 1     | STAFF |
-| FCPS-004    | Marcus Thompson     | Science         | Teacher                | 1     | STAFF |
-| FCPS-005    | Priya Patel         | English         | Teacher                | 1     | STAFF |
-| FCPS-006    | David Hernandez     | IT              | Systems Administrator  | 2     | STAFF |
-| FCPS-007    | Amara Johnson       | Facilities      | Facilities Manager     | 2     | STAFF |
-| FCPS-008    | Robert Kim          | Arts            | Teacher                | 1     | STAFF |
-| FCPS-009    | Fatima Al-Hassan    | Special Ed      | Teacher                | 1     | STAFF |
-| FCPS-010    | Christopher Evans   | PE              | Teacher                | 0     | STAFF |
+| EMPLOYEE_ID | FULL_NAME           | DEPARTMENT      | JOB_TITLE              | ROLE                     |
+|-------------|---------------------|-----------------|------------------------|--------------------------|
+| EMP-001     | Sarah Mitchell      | Administration  | Procurement Coordinator| PROCUREMENT_SUPERVISOR   |
+| EMP-002     | James Okafor        | Administration  | Procurement Coordinator| PROCUREMENT_SUPERVISOR   |
+| EMP-003     | Linda Nguyen        | Mathematics     | Teacher                | REGULAR_STAFF            |
+| EMP-004     | Marcus Thompson     | Science         | Teacher                | REGULAR_STAFF            |
+| EMP-005     | Priya Patel         | English         | Teacher                | REGULAR_STAFF            |
+| EMP-006     | David Hernandez     | IT              | Systems Administrator  | REGULAR_STAFF            |
+| EMP-007     | Amara Johnson       | Facilities      | Facilities Manager     | REGULAR_STAFF            |
+| EMP-008     | Robert Kim          | Arts            | Teacher                | REGULAR_STAFF            |
+| EMP-009     | Fatima Al-Hassan    | Special Ed      | Teacher                | REGULAR_STAFF            |
+| EMP-010     | Christopher Evans   | PE              | Teacher                | NON_STAFF                |
 
-> FCPS-010 has PROCUREMENT_LEVEL = 0 — use this record to demo the access denied scenario.
+> EMP-010 has `ROLE = 'NON_STAFF'` — use this record to demo the access denied scenario.
 
 ### PROCUREMENT_ITEMS (15 records across all statuses)
 
-5 APPROVED — visible to Admin and Staff
-4 PENDING — visible to Admin only
-3 UNDER_REVIEW — visible to Admin only
-3 REJECTED — visible to Admin only
+5 APPROVED — visible to Regular Staff and Procurement Supervisor
+4 PENDING — visible to Procurement Supervisor only
+3 UNDER_REVIEW — visible to Procurement Supervisor only
+3 REJECTED — visible to Procurement Supervisor only
 
 Categories: Technology, Facilities, Supplies, Services, Furniture

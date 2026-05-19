@@ -11,9 +11,18 @@
 
 ## Synthetic-PII alert
 
+> **2026-05-19 supersession** — [ADR-015](../adr/ADR-015-role-model-simplification.md)
+> collapsed the role model to three roles (`PROCUREMENT_SUPERVISOR`,
+> `REGULAR_STAFF`, `NON_STAFF`) and dropped `PROCUREMENT_LEVEL` entirely.
+> Decisions ratified below remain on the historical record; the live code
+> base now reflects ADR-015. Concrete renames: `ADMIN` → `PROCUREMENT_SUPERVISOR`,
+> `STAFF` → `REGULAR_STAFF`, `LEVEL_ZERO` → `NON_STAFF`,
+> `procurement_level` removed from claims and queries.
+
+
 This script writes `FULL_NAME` and `EMAIL` rows into the STAFF table.
 **All values are synthetic per [ADR-007](../adr/ADR-007-synthetic-data-and-idme-sandbox.md)
-+ NFR-08** — no real FCPS staff data ever appears in this script or the
++ NFR-08** — no real staff data ever appears in this script or the
 seed it produces. The email domain is `test.com` to leave no doubt
 about the synthetic-ness (the names are obviously test names too;
 between them there is no plausible re-identification risk).
@@ -38,7 +47,7 @@ in the same commit.
 | AC12-D6 | Seed data | 10 records from DATA_MODEL.md §8 verbatim (EMPLOYEE_ID, FULL_NAME, DEPARTMENT, JOB_TITLE, LEVEL, ROLE). Emails synthesised as `firstname.lastname@test.com` (lowercase, dot-separated). All `IDME_VERIFIED='Y'` and `ACTIVE='Y'` — verification-state edge cases are covered by the dev_auth `level_zero` / `not_registered` personas, not by storing inactive rows. |
 | AC12-D7 | Output | `print()` with checkmarks for human-readable progress (`✓ Dropped STAFF`, `✓ Created STAFF`, `✓ Inserted 10 STAFF rows`). Exit code 0 on success, 1 on any failure. No logger — this is a script, the stdout IS the audit trail. |
 | AC12-D8 | Tests | `oracledb.connect` mocked at the boundary, same pattern as AC-11. Assertions: DROP runs first, CREATE contains all required columns + constraints, exactly 10 INSERTs run with the correct bind values, the data matches DATA_MODEL.md §8, idempotency (re-running calls DROP again). |
-| AC12-D9 | dev_auth realignment | Update `_GRANTED_PERSONAS` in `backend/app/api/dev_auth.py` so `staff_l2 → staff_id=6` (matches FCPS-006 / David Hernandez, the lowest STAFF-L2 row in the seed). `admin_l3 → staff_id=1` and `staff_l1 → staff_id=3` were already correct. ADR-014 and DEV-AUTH-persona-picker.md DEV3 amended with a 2026-05-18 correction note. Reason: once AC-13 wires the real `/callback`, any introspection of a dev-session's `staff_id` against Oracle should resolve to the role/level it claims to be — otherwise demos are confusing. |
+| AC12-D9 | dev_auth realignment | Update `_GRANTED_PERSONAS` in `backend/app/api/dev_auth.py` so `staff_l2 → staff_id=6` (matches EMP-006 / David Hernandez, the lowest STAFF-L2 row in the seed). `admin_l3 → staff_id=1` and `staff_l1 → staff_id=3` were already correct. ADR-014 and DEV-AUTH-persona-picker.md DEV3 amended with a 2026-05-18 correction note. Reason: once AC-13 wires the real `/callback`, any introspection of a dev-session's `staff_id` against Oracle should resolve to the role/level it claims to be — otherwise demos are confusing. |
 | AC12-D10 | PROCUREMENT_ITEMS | **Out of scope for AC-12.** Story is STAFF only. Vendor seed ships in a later story. |
 
 ## Files this story creates / modifies

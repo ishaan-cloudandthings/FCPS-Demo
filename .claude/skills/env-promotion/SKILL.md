@@ -1,9 +1,9 @@
 ---
 name: env-promotion
-description: Produce or update the environment-promotion playbook (dev → staging → prod), governance CI pipeline, and incident runbook for the FCPS Procurement Portal (Docker Compose + EC2). Used by the Administrator agent.
+description: Produce or update the environment-promotion playbook (dev → staging → prod), governance CI pipeline, and incident runbook for the Staff Procurement Portal (Docker Compose + EC2). Used by the Administrator agent.
 ---
 
-# Skill: Environment Promotion — FCPS Procurement Portal
+# Skill: Environment Promotion — Staff Procurement Portal
 
 ## When to use this
 
@@ -47,7 +47,7 @@ The project is approaching its first production deploy, or you need to update th
 - Release tag created (`v<major>.<minor>.<patch>`).
 - Two named approvers click the deploy workflow's "Approve" button.
 
-## FCPS rollback procedure
+## Staff Procurement Portal rollback procedure
 
 **Application rollback:**
 ```bash
@@ -60,7 +60,7 @@ gh workflow run deploy-prod.yml -f rollback_to=<previous-sha>
 - If a schema change was deployed, restore from the pre-deploy Oracle snapshot (if taken) or re-seed from scratch.
 - Always take an Oracle export before any schema-changing deploy: `docker compose exec db exp ORACLE_USER/ORACLE_PASSWORD file=/tmp/pre-deploy.dmp`
 
-## FCPS DevSecOps notes
+## Staff Procurement Portal DevSecOps notes
 
 - **Secrets:** IDME_CLIENT_SECRET, ORACLE_PASSWORD, JWT_SECRET_KEY, EC2_SSH_KEY — never in repo. Use environment variables; manage real values in AWS Secrets Manager for staging/prod, `.env` for dev only.
 - **Supply chain:** Dependabot weekly, `pip-audit`, `npm audit` on each PR.

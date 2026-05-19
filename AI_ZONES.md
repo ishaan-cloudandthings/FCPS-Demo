@@ -1,6 +1,6 @@
 # AI_ZONES.md — Confidence Zone Map
 
-This file maps every module and folder in the FCPS Procurement Portal to a Green, Yellow,
+This file maps every module and folder in the Staff Procurement Portal to a Green, Yellow,
 or Red AI confidence zone. Zone classification determines how much AI autonomy is permitted
 and what review is required before merge.
 

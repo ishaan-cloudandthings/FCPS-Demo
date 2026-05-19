@@ -14,7 +14,7 @@ safe fix over perfect code. A follow-up ticket for cleanup is expected.
 
 ---
 
-You are helping diagnose and resolve a production incident on the FCPS Procurement
+You are helping diagnose and resolve a production incident on the Staff Procurement
 Portal. The priority is to identify the root cause and recommend the safest fix as
 quickly as possible. Clean code is secondary to a safe, targeted resolution.
 

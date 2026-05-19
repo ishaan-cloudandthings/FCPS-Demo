@@ -24,8 +24,7 @@ def _valid_token() -> str:
     return jose_jwt.encode(
         {
             "sub": "42",
-            "role": "ADMIN",
-            "procurement_level": 3,
+            "role": "PROCUREMENT_SUPERVISOR",
             "iss": JWT_ISSUER,
             "aud": JWT_AUDIENCE,
             "iat": int(now.timestamp()),

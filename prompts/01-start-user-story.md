@@ -12,7 +12,7 @@ before writing any code. This is your entry point for every new piece of work.
 
 ---
 
-You are a full stack developer working on the FCPS Procurement Portal. Before doing
+You are a full stack developer working on the Staff Procurement Portal. Before doing
 anything else, read the following files in this exact order. They are your single
 source of truth for this project:
 

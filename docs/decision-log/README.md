@@ -1,6 +1,6 @@
 # Decision Log
 
-This folder records non-ADR decisions made during the build of the FCPS
+This folder records non-ADR decisions made during the build of the Staff Procurement Portal
 Procurement Portal — implementation choices, tooling picks, story-scoped
 Red Zone ratifications, operational settings, and anything else where
 "there's a reason we did it this way" should be discoverable later.

@@ -23,8 +23,7 @@ def _token(**overrides) -> str:
     now = datetime.now(timezone.utc)
     claims = {
         "sub": "42",
-        "role": "ADMIN",
-        "procurement_level": 3,
+        "role": "PROCUREMENT_SUPERVISOR",
         "iss": JWT_ISSUER,
         "aud": JWT_AUDIENCE,
         "iat": int(now.timestamp()),
@@ -40,8 +39,7 @@ def test_me_returns_session_claims_when_authenticated(client):
 
     assert response.status_code == 200
     assert response.json() == {
-        "role": "ADMIN",
-        "procurement_level": 3,
+        "role": "PROCUREMENT_SUPERVISOR",
         "staff_id": 42,                          # AC9-D4: int, not the str sub
     }
 

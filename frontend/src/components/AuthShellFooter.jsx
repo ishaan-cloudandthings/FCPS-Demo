@@ -11,7 +11,7 @@ export function AuthShellFooter() {
       role="contentinfo"
       className="flex items-center justify-between border-t border-gray-200 bg-white px-8 py-3 text-xs text-ink-subtle"
     >
-      <span>© Fairfax County Public Schools · Procurement Portal demo</span>
+      <span>© Staff Procurement Portal · Procurement Portal demo</span>
       <span>
         Built by <span className="font-semibold text-ink-muted">Cloud &amp; Things</span>
       </span>

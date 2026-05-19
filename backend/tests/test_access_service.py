@@ -1,8 +1,11 @@
 """Tests for `app.services.access_service` — AC-13.
 
-Maps to ratified decisions in `docs/decision-log/AC-13-access-service.md`:
+Maps to ratified decisions in `docs/decision-log/AC-13-access-service.md`
+plus the role-model collapse from
+`docs/adr/ADR-015-role-model-simplification.md`:
 
-* AC13-D2 — decision tree branches (parametrised).
+* AC13-D2 — decision tree branches (parametrised). Step 4 is now
+  `role == NON_STAFF` (was `level == 0`).
 * AC13-D3 — Oracle errors propagate, never become denials.
 * AC13-D4 — `employee_id_hash` in logs, never raw `sub`.
 * AC13-D5 — 5 branches + 2 error tests + PII guardrail.
@@ -26,15 +29,14 @@ from app.services.oracle_service import (
 )
 
 
-SUB = "FCPS-SENSITIVE-007"
+SUB = "EMP-SENSITIVE-007"
 
 
 def _staff(**overrides) -> StaffRecord:
     base = dict(
         staff_id=42,
         employee_id=SUB,
-        role="STAFF",
-        procurement_level=2,
+        role="REGULAR_STAFF",
         idme_verified=True,
         active=True,
     )
@@ -57,28 +59,37 @@ def _staff(**overrides) -> StaffRecord:
         ),
         # 2. NOT_VERIFIED — beats every later check
         (
-            _staff(idme_verified=False, active=False, procurement_level=0),
+            _staff(idme_verified=False, active=False, role="NON_STAFF"),
             AccessDecision(granted=False, reason="NOT_VERIFIED"),
         ),
-        # 3. INACTIVE — beats LEVEL_ZERO
+        # 3. INACTIVE — beats NON_STAFF
         (
-            _staff(active=False, procurement_level=0),
+            _staff(active=False, role="NON_STAFF"),
             AccessDecision(granted=False, reason="INACTIVE"),
         ),
-        # 4. LEVEL_ZERO
+        # 4. NON_STAFF (ADR-015 — replaces the old LEVEL_ZERO step)
         (
-            _staff(procurement_level=0),
-            AccessDecision(granted=False, reason="LEVEL_ZERO"),
+            _staff(role="NON_STAFF"),
+            AccessDecision(granted=False, reason="NON_STAFF"),
         ),
-        # 5. GRANTED
+        # 5. GRANTED — REGULAR_STAFF
         (
-            _staff(procurement_level=2),
+            _staff(role="REGULAR_STAFF"),
             AccessDecision(
                 granted=True,
                 reason="GRANTED",
                 staff_id=42,
-                role="STAFF",
-                procurement_level=2,
+                role="REGULAR_STAFF",
+            ),
+        ),
+        # 5. GRANTED — PROCUREMENT_SUPERVISOR
+        (
+            _staff(role="PROCUREMENT_SUPERVISOR"),
+            AccessDecision(
+                granted=True,
+                reason="GRANTED",
+                staff_id=42,
+                role="PROCUREMENT_SUPERVISOR",
             ),
         ),
     ],
@@ -93,20 +104,23 @@ def test_decision_tree_branches(staff, expected):
     assert result == expected
 
 
-def test_granted_admin_record_carries_all_claims():
+def test_granted_supervisor_record_carries_claims():
     conn = MagicMock(name="connection")
-    admin = _staff(staff_id=1, role="ADMIN", procurement_level=3, employee_id="FCPS-001")
+    supervisor = _staff(
+        staff_id=1,
+        role="PROCUREMENT_SUPERVISOR",
+        employee_id="EMP-001",
+    )
     with patch(
         "app.services.access_service.get_staff_by_employee_id",
-        return_value=admin,
+        return_value=supervisor,
     ):
-        result = decide_access(conn, "FCPS-001")
+        result = decide_access(conn, "EMP-001")
     assert result == AccessDecision(
         granted=True,
         reason="GRANTED",
         staff_id=1,
-        role="ADMIN",
-        procurement_level=3,
+        role="PROCUREMENT_SUPERVISOR",
     )
 
 
@@ -142,20 +156,20 @@ def test_oracle_schema_error_propagates():
 
 def test_employee_id_is_never_in_logs(caplog):
     """The raw `sub` (= EMPLOYEE_ID) must NEVER appear in any log line
-    from this service, across all five decision branches plus the two
-    error paths.
+    from this service, across all decision branches plus the two error
+    paths.
     """
     caplog.set_level(logging.DEBUG, logger="app.services.access_service")
     conn = MagicMock(name="connection")
 
     paths = [
-        (None, None),                                # NOT_FOUND
-        (_staff(idme_verified=False), None),         # NOT_VERIFIED
-        (_staff(active=False), None),                # INACTIVE
-        (_staff(procurement_level=0), None),         # LEVEL_ZERO
-        (_staff(procurement_level=2), None),         # GRANTED
-        (None, OracleUnavailable("x")),              # error: unavailable
-        (None, OracleSchemaError("x")),              # error: schema
+        (None, None),                                       # NOT_FOUND
+        (_staff(idme_verified=False), None),                # NOT_VERIFIED
+        (_staff(active=False), None),                       # INACTIVE
+        (_staff(role="NON_STAFF"), None),                   # NON_STAFF
+        (_staff(role="REGULAR_STAFF"), None),               # GRANTED
+        (None, OracleUnavailable("x")),                     # error: unavailable
+        (None, OracleSchemaError("x")),                     # error: schema
     ]
     for staff, raise_exc in paths:
         with patch(
@@ -181,7 +195,7 @@ def test_employee_id_hash_appears_in_log_line(caplog):
     conn = MagicMock(name="connection")
     with patch(
         "app.services.access_service.get_staff_by_employee_id",
-        return_value=_staff(procurement_level=2),
+        return_value=_staff(role="REGULAR_STAFF"),
     ):
         decide_access(conn, SUB)
 

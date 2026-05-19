@@ -11,8 +11,8 @@
 ## Context
 
 After ID.me verification, the backend has the user's ID-token claims, of which
-the `sub` claim is the only stable identifier. ID.me does not return the FCPS
-employee ID; that is FCPS's internal HR identifier.
+the `sub` claim is the only stable identifier. ID.me does not return the Staff Procurement Portal
+employee ID; that is Staff Procurement Portal's internal HR identifier.
 
 The backend must reconcile these two identifiers — "the person ID.me just
 verified" and "the row in our STAFF table that says what they can do" — into a
@@ -24,7 +24,7 @@ The 2026-05-09 call made the mapping decision explicit:
 > `EMPLOYEE_ID` in the STAFF table stores the ID.me subject identifier."
 
 `ARCHITECTURE.md` §7.1 shows the lookup in the data-flow diagram but does not
-specify the mapping; `DATA_MODEL.md` §4.1 describes `EMPLOYEE_ID` as "FCPS
+specify the mapping; `DATA_MODEL.md` §4.1 describes `EMPLOYEE_ID` as "Staff Procurement Portal
 employee identifier" without naming its source.
 
 ## Decision
@@ -39,9 +39,9 @@ employee identifier" without naming its source.
   WHERE EMPLOYEE_ID = :sub
   ```
 
-- `scripts/seed_oracle.py` seeds synthetic `sub` values shaped like `FCPS-001`
-  … `FCPS-010` because the ID.me sandbox issues predictable `sub` values for
-  sandbox test users that map to FCPS-side identifiers by convention.
+- `scripts/seed_oracle.py` seeds synthetic `sub` values shaped like `EMP-001`
+  … `EMP-010` because the ID.me sandbox issues predictable `sub` values for
+  sandbox test users that map to Staff Procurement Portal-side identifiers by convention.
 - `EMPLOYEE_ID` is classified as PII (see `DATA_MODEL.md` §7) and is therefore:
   - **never** returned in any API response,
   - **never** written to application logs,
@@ -59,10 +59,10 @@ employee identifier" without naming its source.
 **Negative**
 
 - The `EMPLOYEE_ID` column is now **overloaded**: it stores both the
-  FCPS-internal employee identifier *and* the ID.me sandbox `sub`. For
-  production, the real ID.me's `sub` format may not match FCPS HR IDs and we
+  Staff Procurement Portal-internal employee identifier *and* the ID.me sandbox `sub`. For
+  production, the real ID.me's `sub` format may not match Staff Procurement Portal HR IDs and we
   would need to split into:
-  - `STAFF.EMPLOYEE_ID` — FCPS internal ID
+  - `STAFF.EMPLOYEE_ID` — Staff Procurement Portal internal ID
   - `STAFF.IDME_SUB` — identity provider key
   This is a phase-2 concern, not a demo blocker.
 
@@ -71,7 +71,7 @@ employee identifier" without naming its source.
 - Update `ARCHITECTURE.md` §7.1 — label the Oracle lookup arrow with `:sub`
   so the mapping is explicit in the diagram.
 - Update `DATA_MODEL.md` §4.1 `EMPLOYEE_ID` description to read: *"Unique.
-  Stores the ID.me `sub` for the demo (see ADR-009). FCPS HR identifier in
+  Stores the ID.me `sub` for the demo (see ADR-009). Staff Procurement Portal HR identifier in
   production (phase-2 split required)."*
 - Phase-2 backlog: ADR to split `EMPLOYEE_ID` / `IDME_SUB`.
 

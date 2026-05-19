@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Access Denied | FCPS Procurement</title>
+<title>Access Denied | Staff Procurement</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -268,24 +268,24 @@
 
   <div class="review-header">
     <h2>Access Denied — design review</h2>
-    <p>Route: <code>/access-denied</code> · Two copy variants depending on the <code>X-Auth-Reason</code> sub-reason returned by <code>POST /api/auth/callback</code>: <code>LEVEL_ZERO</code> · <code>NOT_REGISTERED</code>. Visual treatment is identical.</p>
+    <p>Route: <code>/access-denied</code> · Two copy variants depending on the <code>X-Auth-Reason</code> sub-reason returned by <code>POST /api/auth/callback</code>: <code>NON_STAFF</code> · <code>NOT_REGISTERED</code>. Visual treatment is identical.</p>
   </div>
 
   <!-- =============================================== -->
-  <!-- Variant 1: LEVEL_ZERO                           -->
+  <!-- Variant 1: NON_STAFF                           -->
   <!-- =============================================== -->
   <div class="variant">
-    <div class="variant-label">LEVEL 0 staff — no procurement clearance <span class="pill">X-Auth-Reason: LEVEL_ZERO</span></div>
+    <div class="variant-label">NON_STAFF — no portal access <span class="pill">X-Auth-Reason: NON_STAFF</span></div>
     <div class="frame">
       <div class="frame-bar" aria-hidden="true">
         <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-        <div class="url">https://procurement.fcps.edu/access-denied</div>
+        <div class="url">https://procurement.spp.edu/access-denied</div>
       </div>
       <a href="#main-1" class="skip-link">Skip to main content</a>
       <header class="app" role="banner">
         <span class="brand-wordmark">
           <span class="mark" aria-hidden="true">F</span>
-          FCPS Vendor Procurement Portal
+          Staff Procurement Portal
         </span>
         <span class="built-by">Built by Cloud &amp; Things</span>
       </header>
@@ -301,8 +301,8 @@
           <div class="denied-eyebrow">Access restricted</div>
           <h1>You don't have access to this portal</h1>
           <p class="sub">
-            Your FCPS identity is verified, but your account doesn't have the
-            procurement clearance needed to view vendor records.
+            Your Staff Procurement Portal identity is verified, but your account doesn't have the
+            access to the Staff Procurement Portal.
           </p>
 
           <div class="contact-callout">
@@ -316,8 +316,8 @@
             </p>
           </div>
 
-          <a class="btn-primary" href="#" aria-label="Back to FCPS — signs you out and returns to the FCPS site">
-            Back to FCPS
+          <a class="btn-primary" href="#" aria-label="Back to Staff Procurement Portal — signs you out and returns to the Staff Procurement Portal site">
+            Back to Staff Procurement Portal
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
@@ -328,7 +328,7 @@
 
       <footer class="app" role="contentinfo">
         <div class="footer-content">
-          <span>© Fairfax County Public Schools · Procurement Portal demo</span>
+          <span>© Staff Procurement Portal · Procurement Portal demo</span>
           <span class="footer-built-by"><span>Built by</span><img src="assets/CloudAndThingsv1transparent 1.png" alt="Cloud &amp; Things" class="footer-logo"></span>
         </div>
       </footer>
@@ -343,13 +343,13 @@
     <div class="frame">
       <div class="frame-bar" aria-hidden="true">
         <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-        <div class="url">https://procurement.fcps.edu/access-denied</div>
+        <div class="url">https://procurement.spp.edu/access-denied</div>
       </div>
       <a href="#main-2" class="skip-link">Skip to main content</a>
       <header class="app" role="banner">
         <span class="brand-wordmark">
           <span class="mark" aria-hidden="true">F</span>
-          FCPS Vendor Procurement Portal
+          Staff Procurement Portal
         </span>
         <span class="built-by">Built by Cloud &amp; Things</span>
       </header>
@@ -363,10 +363,10 @@
             </svg>
           </div>
           <div class="denied-eyebrow">Access restricted</div>
-          <h1>We can't sign you in</h1>
+          <h1>Identity not verified</h1>
           <p class="sub">
-            Your identity has been verified, but you're not registered in the
-            FCPS procurement system.
+            We couldn't verify your identity, so you do not have access to
+            the portal. Contact your procurement supervisor.
           </p>
 
           <div class="contact-callout">
@@ -380,8 +380,8 @@
             </p>
           </div>
 
-          <a class="btn-primary" href="#" aria-label="Back to FCPS — signs you out and returns to the FCPS site">
-            Back to FCPS
+          <a class="btn-primary" href="#" aria-label="Back to Staff Procurement Portal — signs you out and returns to the Staff Procurement Portal site">
+            Back to Staff Procurement Portal
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
@@ -392,7 +392,7 @@
 
       <footer class="app" role="contentinfo">
         <div class="footer-content">
-          <span>© Fairfax County Public Schools · Procurement Portal demo</span>
+          <span>© Staff Procurement Portal · Procurement Portal demo</span>
           <span class="footer-built-by"><span>Built by</span><img src="assets/CloudAndThingsv1transparent 1.png" alt="Cloud &amp; Things" class="footer-logo"></span>
         </div>
       </footer>

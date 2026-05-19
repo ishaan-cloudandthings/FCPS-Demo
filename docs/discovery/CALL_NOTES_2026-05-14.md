@@ -1,4 +1,4 @@
-# Requirements Call Notes — FCPS Procurement Portal
+# Requirements Call Notes — Staff Procurement Portal
 
 > BA agent prompt to use after this call:
 > "Read `docs/discovery/CALL_NOTES_2026-05-14.md`, `docs/ARCHITECTURE.md`, and
@@ -16,7 +16,7 @@
 |---|---|
 | Date | 2026-05-14 |
 | Type | Requirements — Procurement Access & Role-Based Views |
-| Attendees | FCPS Procurement Coordinator, FCPS IT Lead, C&T Project Lead |
+| Attendees | Procurement Coordinator, IT Lead, C&T Project Lead |
 | Facilitator | C&T Project Lead |
 | Duration | 60 minutes |
 
@@ -24,7 +24,7 @@
 
 ## Context
 
-FCPS needs a portal where staff can verify their identity and then access procurement
+Staff Procurement Portal needs a portal where staff can verify their identity and then access procurement
 records appropriate to their role. Today everything lives in a spreadsheet that Procurement Coordinator
 manually shares — there's no access control, no audit trail, and staff regularly email
 her asking "is this vendor approved yet?" This portal replaces that.
@@ -42,7 +42,7 @@ The demo we're building needs to show two things clearly:
 ### Journey: Admin views procurement records
 
 **Who does this?**
-Procurement coordinators. There are currently 2 at FCPS (Procurement Coordinator, Procurement Coordinator (secondary)).
+Procurement coordinators. There are currently 2 at Staff Procurement Portal (Procurement Coordinator, Procurement Coordinator (secondary)).
 They manage the full vendor lifecycle.
 
 **What they want to do:**
@@ -84,7 +84,7 @@ vendor bank details or payment terms.
 2. Land on a list — only approved vendors visible
 3. Can see vendor name, category, item/service description
 4. Can see contact name and email if they need to reach out (but only if they have
-   sufficient procurement level — FCPS IT Lead mentioned Level 2+ for contact details)
+   sufficient procurement level — IT Lead mentioned Level 2+ for contact details)
 5. Cannot see bank details under any circumstances
 
 **What success looks like to them:**
@@ -92,7 +92,7 @@ vendor bank details or payment terms.
 yes or no with a contact person if needed. That's it."
 
 **Edge cases or exceptions they mentioned:**
-- What does a staff member with LEVEL=0 see? FCPS IT Lead said they should be denied access
+- What does a staff member with LEVEL=0 see? IT Lead said they should be denied access
   entirely — "if you have no procurement clearance, you shouldn't even be in the system."
 - What if a vendor moves from APPROVED back to UNDER_REVIEW? Staff should immediately
   stop seeing it. The filter is live, not cached.
@@ -101,7 +101,7 @@ yes or no with a contact person if needed. That's it."
 
 ## What Is Out of Scope
 
-- [ ] Vendor self-registration — vendors do not have portal access. FCPS staff submit
+- [ ] Vendor self-registration — vendors do not have portal access. staff submit
       vendor records internally. (Confirmed by Procurement Coordinator: "vendors don't log in, we add them")
 - [ ] Approving or rejecting vendors through the portal — that workflow stays in the
       committee process for now. The portal is read-only for this demo.
@@ -116,13 +116,13 @@ yes or no with a contact person if needed. That's it."
 
 | NFR | What was said |
 |---|---|
-| Performance | "It needs to load fast — teachers check this between classes." FCPS IT Lead said < 3 seconds for the procurement list. |
-| Security | ID.me verification required before any data is shown. JWT session. Bank details must never appear in a non-admin response — FCPS IT Lead was emphatic about this. |
-| Compliance | FERPA doesn't directly apply here (no student data). FCPS IT policy requires all staff-facing tools to support SSO — ID.me satisfies this for the demo. |
+| Performance | "It needs to load fast — teachers check this between classes." IT Lead said < 3 seconds for the procurement list. |
+| Security | ID.me verification required before any data is shown. JWT session. Bank details must never appear in a non-admin response — IT Lead was emphatic about this. |
+| Compliance | FERPA doesn't directly apply here (no student data). Staff Procurement Portal IT policy requires all staff-facing tools to support SSO — ID.me satisfies this for the demo. |
 | Accessibility | WCAG 2.1 AA minimum. Procurement Coordinator mentioned one coordinator uses a screen reader. |
 | Browser support | Chrome, Firefox, Edge. No IE. Safari nice-to-have. |
 | Data retention | Not discussed — flagged as open question. |
-| Audit logging | FCPS IT Lead: "We need to know who looked at bank details and when." Audit log on BANK_DETAILS access is a must-have. |
+| Audit logging | IT Lead: "We need to know who looked at bank details and when." Audit log on BANK_DETAILS access is a must-have. |
 | Uptime | Demo environment — no SLA required. |
 
 ---
@@ -131,7 +131,7 @@ yes or no with a contact person if needed. That's it."
 
 | System | Purpose | Notes |
 |---|---|---|
-| ID.me | Staff identity verification | Sandbox credentials available. FCPS IT Lead will share IDME_CLIENT_ID and IDME_CLIENT_SECRET. Redirect URI must be registered — confirm URL with FCPS IT Lead before dev starts. |
+| ID.me | Staff identity verification | Sandbox credentials available. IT Lead will share IDME_CLIENT_ID and IDME_CLIENT_SECRET. Redirect URI must be registered — confirm URL with IT Lead before dev starts. |
 | Oracle XE | Staff HR data and procurement records | IT team manages the Oracle instance. For the demo we seed our own Docker container. Schema confirmed in DATA_MODEL.md. |
 
 ---
@@ -140,9 +140,9 @@ yes or no with a contact person if needed. That's it."
 
 | Data type | Who owns it | PII / sensitive? | Notes |
 |---|---|---|---|
-| Staff records (name, email, employee ID) | FCPS HR | Yes — PII | Never logged. Employee ID used for Oracle lookup only. |
+| Staff records (name, email, employee ID) | Staff Procurement Portal HR | Yes — PII | Never logged. Employee ID used for Oracle lookup only. |
 | Vendor contact name and email | Procurement team | Yes — PII | Returned only for PROCUREMENT_LEVEL >= 2 |
-| Bank / payment details | Procurement team | Yes — sensitive financial | Returned only for PROCUREMENT_LEVEL = 3 (Admin). FCPS IT Lead: "This is the most sensitive field in the system." |
+| Bank / payment details | Procurement team | Yes — sensitive financial | Returned only for PROCUREMENT_LEVEL = 3 (Admin). IT Lead: "This is the most sensitive field in the system." |
 | Procurement item name, category, status | Procurement team | No | Safe to show to all authenticated staff with LEVEL >= 1 |
 
 ---
@@ -160,7 +160,7 @@ yes or no with a contact person if needed. That's it."
 
 ## Open Questions
 
-- [ ] Data retention policy for STAFF records — how long do we keep a staff member's Oracle row after they leave FCPS? Owner: FCPS IT Lead — needed before production deploy.
+- [ ] Data retention policy for STAFF records — how long do we keep a staff member's Oracle row after they leave Staff Procurement Portal? Owner: IT Lead — needed before production deploy.
 - [ ] What happens if a staff member's IDME_VERIFIED goes back to 'N' mid-session (e.g. their ID.me account is suspended)? Should we invalidate the JWT? Owner: C&T Tech Lead — decision needed before auth implementation.
 - [ ] Should LEVEL 2 staff see CONTACT_EMAIL for REJECTED vendors, or only APPROVED? Procurement Coordinator said "probably not — if it's rejected they don't need to contact anyone." Needs formal sign-off.
 - [ ] Is there a requirement to show the date a vendor was approved? Not discussed — flagged for follow-up.
@@ -169,13 +169,13 @@ yes or no with a contact person if needed. That's it."
 
 ## Exact Quotes Worth Capturing
 
-> "Bank details must never show up for a teacher. That's non-negotiable." — FCPS IT Lead
+> "Bank details must never show up for a teacher. That's non-negotiable." — IT Lead
 
 > "If I'm an admin I need to see everything — pending, rejected, all of it. Otherwise how do I manage the pipeline?" — Procurement Coordinator
 
 > "Staff just need to know: is this vendor approved, and who do I call? That's the whole use case." — Procurement Coordinator
 
-> "Level zero means you have no procurement role at all. You shouldn't even get past the login screen." — FCPS IT Lead
+> "Level zero means you have no procurement role at all. You shouldn't even get past the login screen." — IT Lead
 
 ---
 
@@ -183,7 +183,7 @@ yes or no with a contact person if needed. That's it."
 
 | Action | Owner | By when |
 |---|---|---|
-| Share IDME_CLIENT_ID and IDME_CLIENT_SECRET (sandbox) | FCPS IT Lead | 2026-05-16 |
+| Share IDME_CLIENT_ID and IDME_CLIENT_SECRET (sandbox) | IT Lead | 2026-05-16 |
 | Confirm EC2 redirect URI for ID.me registration | C&T Tech Lead | 2026-05-16 |
 | Formal sign-off on LEVEL 2 access to CONTACT fields for non-APPROVED vendors | Procurement Coordinator | 2026-05-18 |
 | BA agent: produce REQUIREMENTS.md, FUNCTIONAL_DESIGN.md, api-spec.yaml draft | C&T BA (Claude) | 2026-05-15 |
@@ -196,14 +196,14 @@ Quick notes taken during call — unstructured:
 
 - Procurement Coordinator showed us her current Excel spreadsheet. ~120 vendors, 4 status columns
   colour-coded by hand. "This is not sustainable."
-- FCPS IT Lead confirmed Oracle XE is already running on the demo EC2. The STAFF table
+- IT Lead confirmed Oracle XE is already running on the demo EC2. The STAFF table
   has 10 seed records ready.
-- Demo audience will be FCPS IT leadership and 2 procurement coordinators.
+- Demo audience will be Staff Procurement Portal IT leadership and 2 procurement coordinators.
   They want to see the role separation working live — admin logs in, sees everything;
   teacher logs in, sees only approved list. That's the money shot.
 - Procurement Coordinator (secondary) (second admin) won't be at the demo but Procurement Coordinator will log in as both
   roles to show the difference. Need two test accounts ready.
 - No Figma, no design system specified. Procurement Coordinator said "clean and simple, nothing fancy,
   we just need it to work."
-- FCPS IT Lead asked about FERPA. Confirmed no student data is in scope — this is vendor
+- IT Lead asked about FERPA. Confirmed no student data is in scope — this is vendor
   and staff data only.

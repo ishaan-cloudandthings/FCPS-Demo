@@ -1,7 +1,7 @@
-# AI_CONTEXT.md — FCPS Procurement Portal
+# AI_CONTEXT.md — Staff Procurement Portal
 
 > **Read this file before every AI session.** This is the single source of truth for the
-> FCPS Procurement Portal project. All AI tools (Claude, Claude Code) reference this file.
+> Staff Procurement Portal project. All AI tools (Claude, Claude Code) reference this file.
 > Tool-specific files (CLAUDE.md) are thin wrappers that point here.
 
 ---
@@ -10,10 +10,10 @@
 
 | Field          | Value                                                          |
 |----------------|----------------------------------------------------------------|
-| Project        | Fairfax County Public Schools — Procurement Access Portal      |
-| Client         | Fairfax County Public Schools (FCPS)                          |
+| Project        | Staff Procurement Portal — Procurement Access Portal      |
+| Client         | Staff Procurement Portal (Staff Procurement Portal)                          |
 | Build Type     | Greenfield demo build                                          |
-| GitHub Repo    | github.com/Cloud-and-Things/fcps-procurement-portal           |
+| GitHub Repo    | github.com/Cloud-and-Things/spp-procurement-portal           |
 | Framework      | C&T AI-Driven SDLC Framework v1.0                             |
 | Jira Project   | AC                                                            |
 
@@ -40,7 +40,7 @@
 ## Folder Structure
 
 ```
-fcps-procurement-portal/
+spp-procurement-portal/
 ├── backend/
 │   ├── app/
 │   │   ├── api/             # FastAPI route handlers (one file per domain)

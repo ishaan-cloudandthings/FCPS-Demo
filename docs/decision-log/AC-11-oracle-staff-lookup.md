@@ -11,6 +11,15 @@
 
 ## What's in this file
 
+> **2026-05-19 supersession** — [ADR-015](../adr/ADR-015-role-model-simplification.md)
+> collapsed the role model to three roles (`PROCUREMENT_SUPERVISOR`,
+> `REGULAR_STAFF`, `NON_STAFF`) and dropped `PROCUREMENT_LEVEL` entirely.
+> Decisions ratified below remain on the historical record; the live code
+> base now reflects ADR-015. Concrete renames: `ADMIN` → `PROCUREMENT_SUPERVISOR`,
+> `STAFF` → `REGULAR_STAFF`, `LEVEL_ZERO` → `NON_STAFF`,
+> `procurement_level` removed from claims and queries.
+
+
 Yellow Zone doesn't require the formal pre-code ratification ritual that
 Red Zone does, but this story crosses the PII boundary (`STAFF`
 table) and the database boundary at the same time — both deserve an

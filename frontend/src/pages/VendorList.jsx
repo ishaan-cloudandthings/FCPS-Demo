@@ -26,7 +26,7 @@ export function VendorList() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    document.title = "Vendors | FCPS Procurement";
+    document.title = "Vendors | Staff Procurement";
   }, []);
 
   useEffect(() => {

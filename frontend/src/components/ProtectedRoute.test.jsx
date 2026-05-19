@@ -30,8 +30,7 @@ describe("ProtectedRoute", () => {
   it("renders children when authenticated", () => {
     useAuthStore.setState({
       status: "authenticated",
-      role: "ADMIN",
-      procurement_level: 3,
+      role: "PROCUREMENT_SUPERVISOR",
       staff_id: 1,
     });
 

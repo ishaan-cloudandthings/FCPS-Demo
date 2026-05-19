@@ -1,11 +1,11 @@
 openapi: 3.1.0
 
 info:
-  title: FCPS Vendor Procurement Portal API
+  title: Staff Procurement Portal API
   version: 0.1.0
-  summary: Internal vendor procurement portal for FCPS staff
+  summary: Internal vendor procurement portal for staff
   description: |
-    Read-only API backing the FCPS Vendor Procurement Portal demo. Derived directly
+    Read-only API backing the Staff Procurement Portal demo. Derived directly
     from `docs/requirements/REQUIREMENTS.md` v0.1 and `docs/requirements/FUNCTIONAL_DESIGN.md`
     v0.1.
 
@@ -18,7 +18,7 @@ info:
     Naming, layer order, and conventions follow `AI_CONTEXT.md`. RBAC follows the
     role/level matrix in `REQUIREMENTS.md` §2.2.
   contact:
-    name: Cloud & Things (C&T) — FCPS Procurement Portal team
+    name: Cloud & Things (C&T) — Staff Procurement Portal team
   license:
     name: Proprietary
   x-source-documents:
@@ -132,22 +132,23 @@ paths:
               required: true
               schema:
                 type: string
-                enum: [LEVEL_ZERO, NOT_REGISTERED]
+                enum: [NON_STAFF, NOT_REGISTERED]
               description: |
-                * `LEVEL_ZERO` — user exists, `PROCUREMENT_LEVEL = 0`. SPA routes to `/access-denied`.
+                Per [ADR-015](../adr/ADR-015-role-model-simplification.md):
+                * `NON_STAFF` — user exists, `STAFF.ROLE = 'NON_STAFF'`. SPA routes to `/access-denied`.
                 * `NOT_REGISTERED` — combines `NOT_FOUND`, `IDME_VERIFIED='N'`, `ACTIVE='N'`. Same UX (no account-existence leak).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
               examples:
-                level_zero:
-                  summary: PROCUREMENT_LEVEL = 0
+                non_staff:
+                  summary: STAFF.ROLE = 'NON_STAFF'
                   value:
-                    detail: "Access denied. Your account does not have procurement clearance."
+                    detail: "Access denied. Your account does not have portal access."
                 not_registered:
                   summary: Not found / not verified / inactive
                   value:
-                    detail: "Your identity has been verified but you are not registered in the FCPS procurement system. Contact your procurement coordinator."
+                    detail: "Your identity could not be verified and you do not have access to the portal."
         "502":
           $ref: "#/components/responses/IdentityProviderUnreachable"
 
@@ -219,11 +220,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SessionResponse" }
         "403":
-          description: Denied persona (level_zero, not_registered) — matches the `/callback` denial envelope.
+          description: Denied persona (non_staff, not_registered) — matches the `/callback` denial envelope.
           headers:
             X-Auth-Reason:
-              description: '`LEVEL_ZERO` or `NOT_REGISTERED`.'
-              schema: { type: string, enum: [LEVEL_ZERO, NOT_REGISTERED] }
+              description: '`NON_STAFF` or `NOT_REGISTERED` (per ADR-015).'
+              schema: { type: string, enum: [NON_STAFF, NOT_REGISTERED] }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -259,19 +260,26 @@ paths:
       tags: [vendors]
       summary: List vendors (RBAC-filtered)
       description: |
-        Returns the level- and role-appropriate slice of `PROCUREMENT_ITEMS`:
+        Returns the role-appropriate slice of `PROCUREMENT_ITEMS`. Per
+        [ADR-015](../adr/ADR-015-role-model-simplification.md), the level
+        dimension was removed; role is the single authority axis.
 
-        | Role / Level                   | Statuses returned       | Columns returned |
-        | ------------------------------ | ----------------------- | ---------------- |
-        | `STAFF` / level = 1            | APPROVED only           | `item_id, vendor_name, item_name, category` |
-        | `STAFF` / level = 2            | APPROVED only           | + `contact_name` (no `contact_email` per ADR-013) |
-        | `ADMIN` / level = 3            | All statuses            | + `status, unit_price` (no `bank_details` per ADR-012; no `contact_email` per ADR-013) |
+        | Role                      | Statuses returned | Columns returned |
+        | ------------------------- | ----------------- | ---------------- |
+        | `REGULAR_STAFF`           | APPROVED only     | `item_id, vendor_name, item_name, category, contact_name` (no `contact_email` per ADR-013) |
+        | `PROCUREMENT_SUPERVISOR`  | All statuses      | + `status, unit_price` (no `bank_details` per ADR-012; no `contact_email` per ADR-013) |
+
+        > Note: today every authenticated session receives the `admin`
+        > variant — per-role narrowing is the follow-up to ADR-015. The
+        > schema variants (`staff_l1` / `staff_l2` / `admin`) remain in
+        > place so the SPA's `VendorTable` can pick columns from
+        > `row.variant` when narrowing lands.
 
         An empty list is a valid 200 response — the SPA renders the empty state.
       operationId: listVendors
       responses:
         "200":
-          description: Vendor list, shaped per the caller's role and level
+          description: Vendor list, shaped per the caller's role
           content:
             application/json:
               schema:
@@ -353,7 +361,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
-          description: Authenticated but not authorised (caller is not `ADMIN`)
+          description: Authenticated but not authorised (caller is not `PROCUREMENT_SUPERVISOR`)
           headers:
             X-Auth-Reason:
               required: true
@@ -393,7 +401,7 @@ components:
       in: cookie
       name: session
       description: |
-        JWT (HS256, claims `sub=staff_id, role, procurement_level, iat, exp, iss, aud`)
+        JWT (HS256, claims `sub=staff_id, role, iat, exp, iss, aud`)
         in an `HttpOnly; SameSite=Lax` cookie. TTL configurable via `JWT_TTL_HOURS`
         (default 4). Issued by `POST /api/auth/callback`, cleared by
         `POST /api/auth/logout`. The `session` cookie is the **only** accepted
@@ -450,28 +458,32 @@ components:
     DevLoginRequest:
       type: object
       description: |
-        Body for `POST /api/auth/dev-login`. Dev-only — see ADR-014.
+        Body for `POST /api/auth/dev-login`. Dev-only — see ADR-014. Per
+        [ADR-015](../adr/ADR-015-role-model-simplification.md) the persona
+        list collapsed from five to four (three business roles plus the
+        `not_registered` technical denial path).
       required: [persona]
       additionalProperties: false
       properties:
         persona:
           type: string
-          enum: [admin_l3, staff_l2, staff_l1, level_zero, not_registered]
+          enum: [procurement_supervisor, regular_staff, non_staff, not_registered]
 
     SessionResponse:
       type: object
-      required: [role, procurement_level, staff_id]
+      description: |
+        Returned by `POST /api/auth/callback` and `GET /api/auth/me`. Per
+        [ADR-015](../adr/ADR-015-role-model-simplification.md), `role` is
+        the single authority field; `procurement_level` was removed.
+      required: [role, staff_id]
       properties:
         role:
           type: string
-          enum: [ADMIN, STAFF]
-        procurement_level:
-          type: integer
-          minimum: 1
-          maximum: 3
+          enum: [PROCUREMENT_SUPERVISOR, REGULAR_STAFF]
           description: |
-            Only levels 1, 2, 3 are returned. LEVEL 0 never produces a session — the
-            user is denied at `/api/auth/callback` with a 403.
+            Only the two granted roles appear here. `NON_STAFF` users
+            never receive a session — they are denied at
+            `/api/auth/callback` with a 403.
         staff_id:
           type: integer
           description: |
@@ -487,7 +499,10 @@ components:
 
     VendorListItemL1:
       type: object
-      description: List item visible to `STAFF` / `PROCUREMENT_LEVEL = 1`.
+      description: |
+        Narrowest list-item shape. Reserved for future per-role narrowing
+        (see [ADR-015](../adr/ADR-015-role-model-simplification.md));
+        today every authenticated session receives the `admin` variant.
       required: [variant, item_id, vendor_name, item_name, category]
       additionalProperties: false
       properties:
@@ -507,7 +522,9 @@ components:
     VendorListItemL2:
       type: object
       description: |
-        List item visible to `STAFF` / `PROCUREMENT_LEVEL = 2`.
+        Intermediate list-item shape (carries `contact_name`). Reserved
+        for future per-role narrowing (see [ADR-015](../adr/ADR-015-role-model-simplification.md));
+        today every authenticated session receives the `admin` variant.
         `contact_email` was removed from this schema by ADR-013 — email lives only in `VendorDetail`.
       required: [variant, item_id, vendor_name, item_name, category, contact_name]
       additionalProperties: false
@@ -526,7 +543,8 @@ components:
     VendorListItemAdmin:
       type: object
       description: |
-        List item visible to `ADMIN` / `PROCUREMENT_LEVEL = 3`.
+        List item visible to `PROCUREMENT_SUPERVISOR` (per ADR-015 —
+        previously `ADMIN`).
         `bank_details` was removed by ADR-012; `contact_email` was removed by ADR-013 (lives only in `VendorDetail`).
       required:
         - variant
@@ -560,7 +578,7 @@ components:
     VendorDetail:
       type: object
       description: |
-        Full vendor record for `ADMIN`. The **only** schema in the API surface
+        Full vendor record for `PROCUREMENT_SUPERVISOR` (per ADR-015). The **only** schema in the API surface
         that returns `contact_email` (per [ADR-013](../adr/ADR-013-api-responses-match-ui-display.md))
         — list endpoints return contact name only. `bank_details` was removed
         from this schema by ADR-012, along with the audit-log row this endpoint

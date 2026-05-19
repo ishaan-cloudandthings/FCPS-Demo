@@ -2,7 +2,7 @@
  * Auth bootstrap hook — implements FUNCTIONAL_DESIGN.md §7.2.
  *
  * On SPA mount, call GET /api/auth/me:
- *   - 200 → hydrate the auth store with {role, procurement_level, staff_id}.
+ *   - 200 → hydrate the auth store with {role, staff_id}.
  *   - 401 → mark unauthenticated; the page-level routing decides whether
  *           the current URL is allowed for an anonymous user.
  *

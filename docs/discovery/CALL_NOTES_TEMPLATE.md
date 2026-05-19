@@ -1,4 +1,4 @@
-# Requirements Call Notes — FCPS Procurement Portal
+# Requirements Call Notes — Staff Procurement Portal
 
 > **How to use:** Fill this in after every requirements or discovery call.
 > Save a copy as `CALL_NOTES_YYYY-MM-DD.md` in this folder.

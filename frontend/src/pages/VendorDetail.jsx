@@ -24,7 +24,7 @@ export function VendorDetail() {
       .then((data) => {
         if (cancelled) return;
         setVendor(data);
-        document.title = `${data.vendor_name} | FCPS Procurement`;
+        document.title = `${data.vendor_name} | Staff Procurement`;
       })
       .catch((err) => {
         if (cancelled) return;

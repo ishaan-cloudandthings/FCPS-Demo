@@ -90,7 +90,7 @@ exactly one screen renders it.
 
 **Negative**
 
-- If FCPS later wants L2 staff to see contact_email somewhere
+- If Staff Procurement Portal later wants L2 staff to see contact_email somewhere
   (e.g., a future export, a future "my favourite vendors" view), an API
   change is required. Acceptable cost for a tightly-scoped demo.
 - `rbac_service.list_query_params` has a slightly less expressive flag

@@ -1,9 +1,10 @@
 """Tests for `app.auth.dependencies` — AC-8.
 
-Covers AC8-D14's plan for the three Depends factories:
+Covers AC8-D14's plan for the two surviving Depends factories
+(per ADR-015, `require_level` was removed along with `PROCUREMENT_LEVEL`):
+
 * require_authenticated     — success, missing cookie, invalid token
 * require_role              — role match + role mismatch (X-Auth-Reason)
-* require_level             — level >= min + level < min
 """
 from __future__ import annotations
 
@@ -16,7 +17,6 @@ from jose import jwt as jose_jwt
 
 from app.auth.dependencies import (
     require_authenticated,
-    require_level,
     require_role,
 )
 from app.auth.jwt_session import (
@@ -34,8 +34,7 @@ def _make_token(secret: str = SECRET, **overrides) -> str:
     now = datetime.now(timezone.utc)
     claims = {
         "sub": "42",
-        "role": "ADMIN",
-        "procurement_level": 3,
+        "role": "PROCUREMENT_SUPERVISOR",
         "iss": JWT_ISSUER,
         "aud": JWT_AUDIENCE,
         "iat": int(now.timestamp()),
@@ -55,15 +54,12 @@ def app_with_routes() -> FastAPI:
         return {
             "staff_id": claims.staff_id,
             "role": claims.role,
-            "procurement_level": claims.procurement_level,
         }
 
-    @app.get("/admin-only")
-    def admin_only(claims: SessionClaims = Depends(require_role("ADMIN"))):
-        return {"ok": True, "staff_id": claims.staff_id}
-
-    @app.get("/level-2-plus")
-    def level_2_plus(claims: SessionClaims = Depends(require_level(2))):
+    @app.get("/supervisor-only")
+    def supervisor_only(
+        claims: SessionClaims = Depends(require_role("PROCUREMENT_SUPERVISOR")),
+    ):
         return {"ok": True, "staff_id": claims.staff_id}
 
     return app
@@ -86,8 +82,7 @@ def test_require_authenticated_success(client: TestClient):
     assert response.status_code == 200
     assert response.json() == {
         "staff_id": 42,
-        "role": "ADMIN",
-        "procurement_level": 3,
+        "role": "PROCUREMENT_SUPERVISOR",
     }
 
 
@@ -105,46 +100,31 @@ def test_require_authenticated_invalid_token_returns_401(client: TestClient):
     assert response.json() == {"detail": "Session invalid or expired."}
 
 
+def test_require_authenticated_rejects_legacy_role(client: TestClient):
+    """ADR-015 — `ADMIN` / `STAFF` are not in the allowlist any more."""
+    token = _make_token(role="ADMIN")
+    response = client.get("/auth/me", cookies={COOKIE_NAME: token})
+    assert response.status_code == 401  # caught by jwt_session's _VALID_ROLES
+
+
 # ---------------------------------------------------------------------------
 # require_role
 # ---------------------------------------------------------------------------
 
 
-def test_require_role_admin_passes_for_admin(client: TestClient):
-    token = _make_token(role="ADMIN")
-    response = client.get("/admin-only", cookies={COOKIE_NAME: token})
+def test_require_role_supervisor_passes_for_supervisor(client: TestClient):
+    token = _make_token(role="PROCUREMENT_SUPERVISOR")
+    response = client.get("/supervisor-only", cookies={COOKIE_NAME: token})
     assert response.status_code == 200
     assert response.json()["ok"] is True
 
 
-def test_require_role_admin_forbidden_for_staff(client: TestClient):
-    token = _make_token(role="STAFF")
-    response = client.get("/admin-only", cookies={COOKIE_NAME: token})
+def test_require_role_supervisor_forbidden_for_regular_staff(client: TestClient):
+    token = _make_token(role="REGULAR_STAFF")
+    response = client.get("/supervisor-only", cookies={COOKIE_NAME: token})
 
     assert response.status_code == 403
     assert response.json() == {
         "detail": "You do not have permission to view this resource."
     }
     assert response.headers.get("X-Auth-Reason") == "ROLE_FORBIDDEN"
-
-
-# ---------------------------------------------------------------------------
-# require_level
-# ---------------------------------------------------------------------------
-
-
-def test_require_level_passes_when_level_meets_minimum(client: TestClient):
-    token = _make_token(procurement_level=2)
-    response = client.get("/level-2-plus", cookies={COOKIE_NAME: token})
-    assert response.status_code == 200
-
-
-def test_require_level_forbidden_when_level_below_minimum(client: TestClient):
-    token = _make_token(procurement_level=1)
-    response = client.get("/level-2-plus", cookies={COOKIE_NAME: token})
-
-    assert response.status_code == 403
-    assert response.headers.get("X-Auth-Reason") == "ROLE_FORBIDDEN"
-    assert response.json() == {
-        "detail": "You do not have permission to view this resource."
-    }

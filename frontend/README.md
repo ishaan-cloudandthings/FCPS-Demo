@@ -1,4 +1,4 @@
-# FCPS Procurement Portal — Frontend
+# Staff Procurement Portal — Frontend
 
 React SPA. See:
 

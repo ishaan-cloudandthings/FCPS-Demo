@@ -1,4 +1,4 @@
-# Design Rationale — FCPS Vendor Procurement Portal
+# Design Rationale — Staff Procurement Portal
 
 | Field | Value |
 |---|---|
@@ -10,7 +10,7 @@
 | Status | Living document — appended as each screen is designed and reviewed |
 
 This is the single design rationale for every page-level component in the
-FCPS Vendor Procurement Portal demo. The **Shared design language** section
+Staff Procurement Portal demo. The **Shared design language** section
 covers patterns and tokens used across all screens — read it first. Each
 per-screen section below references it rather than repeating it.
 
@@ -45,7 +45,7 @@ not a wireframe.
 - Fine 2 px orange under-rule
   (`linear-gradient(90deg, transparent, #F47920, transparent)`)
 - **Left:** brand chip (orange tile with white "F" monogram) + portal wordmark.
-  The chip is a placeholder for the FCPS logo asset (REQUIREMENTS.md OQ-05);
+  The chip is a placeholder for the Staff Procurement Portal logo asset (REQUIREMENTS.md OQ-05);
   it slots in at the same dimensions once the asset arrives.
 - **Right, anonymous pages:** "Built by Cloud & Things" text-only attribution.
 - **Right, authenticated pages:** user pill (`Signed in · ROLE · LEVEL`)
@@ -60,7 +60,7 @@ not a wireframe.
 #### Footer (light)
 
 - White background, 1 px border-top.
-- **Left:** `© Fairfax County Public Schools · Procurement Portal demo`
+- **Left:** `© Staff Procurement Portal · Procurement Portal demo`
 - **Right:** `Built by` + real Cloud & Things logo image at 22 px height.
 
 #### Ambient page background
@@ -84,8 +84,8 @@ threshold; communicates "this product is intentionally designed".
   `<footer role="contentinfo">`.
 - **Real `<button>` / real `<a>`** — never `<div onClick>` (FD §7.8).
 - **Visible focus rings** on every interactive element, contrast ≥ 3:1.
-- **Page titles** set dynamically (FD §7.8): `Login | FCPS Procurement`,
-  `Verifying… | FCPS Procurement`, `Vendors | FCPS Procurement`, etc.
+- **Page titles** set dynamically (FD §7.8): `Login | Staff Procurement`,
+  `Verifying… | Staff Procurement`, `Vendors | Staff Procurement`, etc.
 - **`prefers-reduced-motion`** respected — spinners and progress bars halt.
 - **Colour never the sole signal** (FR-18 / NFR-04) — pairs with a text label
   or icon shape everywhere it's used to convey state.
@@ -99,7 +99,7 @@ suppliers.
 
 ### Open follow-ups that apply everywhere
 
-- **FCPS logo asset** (REQUIREMENTS.md OQ-05) — replaces the orange "F" brand
+- **Staff Procurement Portal logo asset** (REQUIREMENTS.md OQ-05) — replaces the orange "F" brand
   chip in the header once provided.
 - **`jest-axe` accessibility audit** once the React components are built
   (FUNCTIONAL_DESIGN.md §14).
@@ -117,7 +117,7 @@ suppliers.
 
 1. Make the only action on this screen ("Verify with ID.me") completely
    unambiguous. There is nothing else to do here.
-2. Set the expectation that this is an *internal FCPS tool* with
+2. Set the expectation that this is an *internal Staff Procurement Portal tool* with
    verified-identity access — so a teacher who lands here understands why
    they're being routed through ID.me.
 3. Handle the session-expired return path without alarming the user
@@ -253,7 +253,7 @@ Most failure modes route away before this component renders:
 |---|---|---|
 | 400 — `state` invalid / expired | callback POST returns 400 | `/` with toast |
 | 401 — ID-token validation failed | callback POST returns 401 | `/` with toast |
-| 403 — `LEVEL_ZERO` | 403 + `X-Auth-Reason: LEVEL_ZERO` | `/access-denied` |
+| 403 — `NON_STAFF` | 403 + `X-Auth-Reason: NON_STAFF` | `/access-denied` |
 | 403 — `NOT_REGISTERED` | 403 + `X-Auth-Reason: NOT_REGISTERED` | `/access-denied` |
 | 502 — ID.me unreachable | callback POST returns 502 | `/` with toast |
 | Network failure / no response in 10 s | SPA `AbortController` | **State B** |
@@ -290,7 +290,7 @@ useEffect(() => {
 - **`role="status"` + `aria-live="polite"`** on the verifying card.
 - **Spinner has `aria-hidden="true"`** — the textual heading is the announced
   content. SR users hear *"Verifying your identity… Just a moment while we
-  check your FCPS procurement access"* once.
+  check your staff procurement access"* once.
 - **`prefers-reduced-motion`** disables both spinner rotation and progress
   slide.
 
@@ -340,9 +340,9 @@ increases, this SPA value must track.
 ### Four variants in the file
 
 1. **Staff · LEVEL 1** — 3 columns: Vendor · Category · Item/Service.
-   No row-click. Lead reads *"Approved vendors cleared for FCPS procurement."*
+   No row-click. Lead reads *"Approved vendors cleared for staff procurement."*
 2. **Staff · LEVEL 2** — 4 columns: + Contact name. Otherwise identical to
-   L1. Lead reads *"Approved vendors with contact details for FCPS
+   L1. Lead reads *"Approved vendors with contact details for Staff Procurement Portal
    procurement."* (Per [ADR-013](../adr/ADR-013-api-responses-match-ui-display.md),
    `contact_email` is **not** returned by the list endpoint at L2 — email
    lives only in the admin-only detail response.)
@@ -616,7 +616,7 @@ visible in the same eye-fixation as the status.
 ### Behaviour (engineer handoff)
 
 ```js
-// Route guard: ProtectedRoute role="ADMIN"
+// Route guard: ProtectedRoute role="PROCUREMENT_SUPERVISOR"
 // On mount:
 GET /api/vendors/:id   // returns VendorDetail
   → 200 → render
@@ -626,7 +626,7 @@ GET /api/vendors/:id   // returns VendorDetail
 ```
 
 - Date formatting: `Intl.DateTimeFormat(undefined, { dateStyle: "medium" })`.
-  In production we may want to fix the locale to `en-US` for FCPS.
+  In production we may want to fix the locale to `en-US` for Staff Procurement Portal.
 - Money formatting: `Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })`.
 - *No audit-log side effect.* The detail endpoint is a simple read.
 
@@ -637,8 +637,8 @@ GET /api/vendors/:id   // returns VendorDetail
 - `<dl>` semantics make label / value pairs readable.
 - Status badges and category pills pair colour with text (FR-18 / NFR-04).
 - Back-link is a real `<a>` with a visible focus ring (3 px C&T Blue).
-- Page title (FD §7.8): `<Vendor Name> | FCPS Procurement` —
-  e.g. `Dell Technologies | FCPS Procurement`.
+- Page title (FD §7.8): `<Vendor Name> | Staff Procurement` —
+  e.g. `Dell Technologies | Staff Procurement`.
 
 ### What's left out (and why)
 
@@ -687,17 +687,17 @@ Both rendered with the same visual structure. The only difference is the
 heading + sub copy, driven by the `X-Auth-Reason` response header that the
 SPA reads from `POST /api/auth/callback`:
 
-1. **`LEVEL_ZERO`** — user exists in `STAFF`, but `PROCUREMENT_LEVEL = 0`.
-   Heading: *"You don't have access to this portal."* Sub: *"Your FCPS
+1. **`NON_STAFF`** — user exists in `STAFF`, but `PROCUREMENT_LEVEL = 0`.
+   Heading: *"You don't have access to this portal."* Sub: *"Your Staff Procurement Portal
    identity is verified, but your account doesn't have the procurement
    clearance needed to view vendor records."*
 2. **`NOT_REGISTERED`** — covers `NOT_FOUND` + `IDME_VERIFIED='N'` +
    `ACTIVE='N'` (combined into one bucket on purpose, per FD §6.6 — no
-   account-existence enumeration leak). Heading: *"We can't sign you in."*
-   Sub: *"Your identity has been verified, but you're not registered in
-   the FCPS procurement system."*
+   account-existence enumeration leak). Heading: *"Identity not verified."*
+   Sub: *"We couldn't verify your identity, so you do not have access to
+   the portal. Contact your procurement supervisor."*
 
-The two headings are deliberately phrased differently: LEVEL_ZERO is a
+The two headings are deliberately phrased differently: NON_STAFF is a
 *permissions* problem ("you can't go in here"); NOT_REGISTERED is an
 *identity-system* problem ("we don't have a record of you"). A user who's
 been promoted to LEVEL ≥ 1 but hasn't been re-seeded would see the
@@ -713,7 +713,7 @@ on the header would be misleading and a little cruel.
 
 The header instead matches the Login screen: brand wordmark on the left,
 plain "Built by Cloud & Things" attribution on the right. No user pill,
-no Log out button. The "Back to FCPS" CTA inside the card handles the
+no Log out button. The "Back to Staff Procurement Portal" CTA inside the card handles the
 logout flow.
 
 ### Layout decisions
@@ -735,7 +735,7 @@ logout flow.
   identity-callout component from Login (same blue tones, same border
   radius). The contact-your-coordinator text is the most useful sentence
   on the page; the blue box gives it visible weight without alarm.
-- **Primary CTA "Back to FCPS"** with a forward-arrow icon — same gradient
+- **Primary CTA "Back to Staff Procurement Portal"** with a forward-arrow icon — same gradient
   orange button used everywhere else, but the arrow signals "you're going
   somewhere" rather than "you're submitting a form".
 - **Hint line under the CTA** — *"Clicking this will sign you out of the
@@ -745,19 +745,19 @@ logout flow.
 
 ### Behaviour (engineer handoff)
 
-Clicking "Back to FCPS":
+Clicking "Back to Staff Procurement Portal":
 
 1. `POST /api/auth/logout` — clears the `session` cookie (idempotent).
-2. Browser navigates to the configured FCPS staff landing page (e.g.
-   `https://www.fcps.edu`). For the demo the destination is the
-   `?FRONTEND_URL` config var; production should point at FCPS's own
+2. Browser navigates to the configured staff landing page (e.g.
+   `https://www.spp.edu`). For the demo the destination is the
+   `?FRONTEND_URL` config var; production should point at Staff Procurement Portal's own
    portal.
 
 The Access Denied page does **not** read any data from the API. The
 copy variant is selected on mount based on a `reason` value passed via
 route state (set by `VerificationCallback` after parsing
 `X-Auth-Reason`). Refreshing the page without that state shows the
-LEVEL_ZERO copy as the safe default.
+NON_STAFF copy as the safe default.
 
 ### Accessibility
 
@@ -770,19 +770,19 @@ LEVEL_ZERO copy as the safe default.
 - **The lock icon is `aria-hidden`**; the heading and sub paragraph carry
   the meaning.
 - **`aria-label` on the CTA** spells out the destination explicitly:
-  *"Back to FCPS — signs you out and returns to the FCPS site"*. Screen
+  *"Back to Staff Procurement Portal — signs you out and returns to the Staff Procurement Portal site"*. Screen
   reader users know what's about to happen before activating.
 - **Contrast** — heading on white ≥ 16:1; sub-paragraph muted-grey ≥ 7:1;
   blue-tinted callout text ≥ 9:1 against its background.
-- **Page title** (FD §7.8): `Access Denied | FCPS Procurement`.
+- **Page title** (FD §7.8): `Access Denied | Staff Procurement`.
 
 ### What's left out (and why)
 
 - **No support / help-desk email or phone number on screen.** The contact
   instruction is intentionally vague ("contact your procurement
   coordinator") because the actual contact details aren't in spec scope
-  (REQUIREMENTS.md §10 — FCPS data governance / help-desk routing is a
-  phase-2 question). Once FCPS provides a contact, we either inline the
+  (REQUIREMENTS.md §10 — data governance / help-desk routing is a
+  phase-2 question). Once Staff Procurement Portal provides a contact, we either inline the
   name + email or turn the contact-your-coordinator line into a mailto
   link.
 - **No "try a different account" affordance.** ID.me sessions persist on
@@ -798,7 +798,7 @@ LEVEL_ZERO copy as the safe default.
 
 ### Open follow-up
 
-- Once FCPS confirms a help-desk contact (REQUIREMENTS.md §10 OQ-07), wire
+- Once Staff Procurement Portal confirms a help-desk contact (REQUIREMENTS.md §10 OQ-07), wire
   it into the callout — either as plain text ("contact \<name\> at
   \<email\>") or a `mailto:` link. The component already has space for it
   in the current callout block.

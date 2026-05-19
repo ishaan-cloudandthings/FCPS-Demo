@@ -48,8 +48,10 @@ _VALID_STATUSES = frozenset({"PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED"})
 # AC11-D5: SQL pinned at module level, parameter-bound, no f-strings. The
 # SELECT list is exhaustive — adding a column requires a code change AND
 # a decision-log update, because some columns in STAFF are PII.
+#
+# ADR-015: `PROCUREMENT_LEVEL` removed; `ROLE` is the single authority.
 _SELECT_STAFF_BY_EMPLOYEE_ID = """\
-SELECT STAFF_ID, EMPLOYEE_ID, ROLE, PROCUREMENT_LEVEL, IDME_VERIFIED, ACTIVE
+SELECT STAFF_ID, EMPLOYEE_ID, ROLE, IDME_VERIFIED, ACTIVE
 FROM STAFF
 WHERE EMPLOYEE_ID = :employee_id
 """
@@ -59,12 +61,21 @@ WHERE EMPLOYEE_ID = :employee_id
 _YES = "Y"
 _NO = "N"
 _VALID_YN = frozenset({_YES, _NO})
-_VALID_ROLES = frozenset({"ADMIN", "STAFF"})
+
+# ADR-015: three roles. NON_STAFF is a STAFF-table value that triggers
+# denial in access_service; never reaches a session.
+StaffRole = Literal["PROCUREMENT_SUPERVISOR", "REGULAR_STAFF", "NON_STAFF"]
+_VALID_STAFF_ROLES = frozenset(
+    {"PROCUREMENT_SUPERVISOR", "REGULAR_STAFF", "NON_STAFF"}
+)
 
 
 @dataclass(frozen=True)
 class StaffRecord:
     """The slice of `STAFF` this service is permitted to return.
+
+    Per [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md):
+    `procurement_level` removed; `role` is the single authority field.
 
     Note the deliberate absence of `FULL_NAME` and `EMAIL`. Adding them
     here means adding them to the SELECT — see PII discipline note in
@@ -72,8 +83,7 @@ class StaffRecord:
     """
     staff_id: int
     employee_id: str
-    role: Literal["ADMIN", "STAFF"]
-    procurement_level: int
+    role: StaffRole
     idme_verified: bool
     active: bool
 
@@ -86,8 +96,9 @@ class OracleUnavailable(Exception):
 
 class OracleSchemaError(Exception):
     """Raised when a row comes back with an unexpected shape or value
-    (e.g. `ROLE` not in {ADMIN, STAFF}, `IDME_VERIFIED` not in {Y, N}).
-    Callers map to 500 — this indicates the DB and code have drifted.
+    (e.g. `ROLE` not in the ADR-015 allowlist, `IDME_VERIFIED` not in
+    {Y, N}). Callers map to 500 — this indicates the DB and code have
+    drifted.
     """
 
 
@@ -111,24 +122,24 @@ def _coerce_yn(value: object, *, column: str) -> bool:
 
 
 def _row_to_staff_record(row: tuple) -> StaffRecord:
-    """Map a 6-column row to a `StaffRecord` with validation."""
-    if len(row) != 6:
+    """Map a 5-column row to a `StaffRecord` with validation."""
+    if len(row) != 5:
         raise OracleSchemaError(
-            f"expected 6 columns in STAFF row, got {len(row)}"
+            f"expected 5 columns in STAFF row, got {len(row)}"
         )
 
-    staff_id, employee_id, role, procurement_level, idme_verified, active = row
+    staff_id, employee_id, role, idme_verified, active = row
 
-    if role not in _VALID_ROLES:
+    if role not in _VALID_STAFF_ROLES:
         raise OracleSchemaError(
-            f"unexpected ROLE value: {role!r} (expected ADMIN or STAFF)"
+            f"unexpected ROLE value: {role!r} "
+            f"(expected one of {sorted(_VALID_STAFF_ROLES)})"
         )
 
     return StaffRecord(
         staff_id=int(staff_id),
         employee_id=str(employee_id),
         role=role,                                           # type: ignore[arg-type]
-        procurement_level=int(procurement_level),
         idme_verified=_coerce_yn(idme_verified, column="IDME_VERIFIED"),
         active=_coerce_yn(active, column="ACTIVE"),
     )

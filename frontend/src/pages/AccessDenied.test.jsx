@@ -3,8 +3,8 @@
  *
  * Maps to decisions in `docs/decision-log/AC-14-access-denied.md`:
  *   - AC14-D1 — variant selection by route state.
- *   - AC14-D2 — default to LEVEL_ZERO when no state.
- *   - AC14-D3 — "Back to FCPS" posts logout and navigates to "/".
+ *   - AC14-D2 — default to NON_STAFF when no state.
+ *   - AC14-D3 — "Back to Staff Procurement Portal" posts logout and navigates to "/".
  *   - AC14-D5 — accessibility: SkipLink, main landmark.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -33,40 +33,40 @@ function renderAt(reason) {
 }
 
 describe("AccessDenied", () => {
-  it("renders the LEVEL_ZERO copy variant when route state says LEVEL_ZERO", () => {
-    renderAt("LEVEL_ZERO");
+  it("renders the NON_STAFF copy variant when route state says NON_STAFF", () => {
+    renderAt("NON_STAFF");
     expect(
       screen.getByRole("heading", { name: /you don't have access to this portal/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/procurement clearance needed to view vendor records/i),
+      screen.getByText(/doesn't have access to the staff procurement portal/i),
     ).toBeInTheDocument();
   });
 
   it("renders the NOT_REGISTERED copy variant when route state says NOT_REGISTERED", () => {
     renderAt("NOT_REGISTERED");
     expect(
-      screen.getByRole("heading", { name: /we can't sign you in/i }),
+      screen.getByRole("heading", { name: /identity not verified/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/not registered in the fcps procurement system/i),
+      screen.getByText(/couldn't verify your identity/i),
     ).toBeInTheDocument();
   });
 
-  it("defaults to LEVEL_ZERO when no route state is present (AC14-D2)", () => {
+  it("defaults to NON_STAFF when no route state is present (AC14-D2)", () => {
     renderAt(undefined);
     expect(
       screen.getByRole("heading", { name: /you don't have access to this portal/i }),
     ).toBeInTheDocument();
   });
 
-  it("'Back to FCPS' posts logout and navigates to /", async () => {
+  it("'Back to Staff Procurement Portal' posts logout and navigates to /", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("", { status: 204 }));
     globalThis.fetch = fetchMock;
 
-    renderAt("LEVEL_ZERO");
+    renderAt("NON_STAFF");
     await userEvent.click(
-      screen.getByRole("button", { name: /back to fcps/i }),
+      screen.getByRole("button", { name: /back to staff procurement portal/i }),
     );
 
     await waitFor(() => {
@@ -79,7 +79,7 @@ describe("AccessDenied", () => {
   });
 
   it("renders the skip link and a <main> landmark", () => {
-    renderAt("LEVEL_ZERO");
+    renderAt("NON_STAFF");
     expect(
       screen.getByRole("link", { name: /skip to main content/i }),
     ).toBeInTheDocument();

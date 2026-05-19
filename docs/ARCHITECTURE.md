@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — FCPS Procurement Portal
+# ARCHITECTURE.md — Staff Procurement Portal
 
 > **Reference document.** Do not modify without explicit instruction and a corresponding ADR.
 > All implementation must conform to the patterns described here.
@@ -28,7 +28,7 @@
 
 ## 1. System Overview
 
-The FCPS Procurement Portal allows Fairfax County Public Schools staff to self-register,
+The Staff Procurement Portal allows Staff Procurement Portal staff to self-register,
 verify their identity via ID.me, and access procurement data appropriate to their role.
 Admins (procurement coordinators) see all records. Staff (teachers) see approved records only.
 
@@ -57,10 +57,10 @@ The system integrates two external sources of truth:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                   FCPS Procurement Portal                            │
+│                   Staff Procurement Portal                            │
 │                                                                      │
 │  ┌─────────────┐   HTTPS    ┌──────────────────────────────────┐    │
-│  │  FCPS Staff │ ─────────► │  React SPA (Nginx on EC2)        │    │
+│  │  Staff Procurement Portal Staff │ ─────────► │  React SPA (Nginx on EC2)        │    │
 │  │  / Admin    │            └──────────────┬───────────────────┘    │
 │  └─────────────┘                           │ REST API               │
 │                              ┌─────────────▼───────────────────┐    │
@@ -320,8 +320,8 @@ Never hardcoded. See `.env.example` for the full list.
 
 ```bash
 # 1. Clone the repo
-git clone github.com/Cloud-and-Things/fcps-procurement-portal
-cd fcps-procurement-portal
+git clone github.com/Cloud-and-Things/spp-procurement-portal
+cd spp-procurement-portal
 
 # 2. Copy env template and fill in values
 cp .env.example .env

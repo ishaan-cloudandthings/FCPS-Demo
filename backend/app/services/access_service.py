@@ -4,19 +4,20 @@
 Ratified decisions:
     docs/decision-log/AC-13-access-service.md (AC13-D1 … AC13-D6)
     docs/decision-log/AC-7-callback.md      (AC7-D8 — contract was fixed at AC-7)
+    docs/adr/ADR-015-role-model-simplification.md  ← role model + decision tree changes
 
 Decision tree per [FUNCTIONAL_DESIGN.md §6.6](../../../docs/requirements/FUNCTIONAL_DESIGN.md),
-evaluated in order:
+evaluated in order (post-ADR-015):
 
   1. STAFF row missing            → NOT_FOUND
   2. STAFF.IDME_VERIFIED != 'Y'   → NOT_VERIFIED
   3. STAFF.ACTIVE != 'Y'          → INACTIVE
-  4. STAFF.PROCUREMENT_LEVEL == 0 → LEVEL_ZERO
+  4. STAFF.ROLE == 'NON_STAFF'    → NON_STAFF
   5. otherwise                    → GRANTED
 
 The first three denial reasons collapse to `X-Auth-Reason: NOT_REGISTERED`
 at the router boundary (no account-existence enumeration leak — FR-03 +
-AC7-D9). LEVEL_ZERO carries its own header value.
+AC7-D9). NON_STAFF carries its own header value.
 
 PII discipline (AC13-D4 / AC7-D11):
 - `sub` is the ID.me sub which equals `STAFF.EMPLOYEE_ID` per ADR-009 — PII.
@@ -45,7 +46,7 @@ AccessReason = Literal[
     "NOT_FOUND",       # no STAFF row for this sub
     "NOT_VERIFIED",    # STAFF.IDME_VERIFIED != 'Y'
     "INACTIVE",        # STAFF.ACTIVE != 'Y'
-    "LEVEL_ZERO",      # STAFF.PROCUREMENT_LEVEL == 0
+    "NON_STAFF",       # STAFF.ROLE == 'NON_STAFF' (ADR-015)
 ]
 
 
@@ -53,21 +54,20 @@ AccessReason = Literal[
 class AccessDecision:
     """Outcome of `decide_access`.
 
-    `granted=True`  → `reason="GRANTED"`; `staff_id`/`role`/`procurement_level`
-                      are all populated.
+    `granted=True`  → `reason="GRANTED"`; `staff_id` and `role` are populated.
     `granted=False` → `reason` is one of the denial reasons; the remaining
                       fields are None.
 
-    Per AC7-D9, the AC-7 endpoint maps the reason to `X-Auth-Reason`:
-      * LEVEL_ZERO → "LEVEL_ZERO"
+    Per AC7-D9 + [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md),
+    the AC-7 endpoint maps the reason to `X-Auth-Reason`:
+      * NON_STAFF → "NON_STAFF"
       * NOT_FOUND / NOT_VERIFIED / INACTIVE → collapsed to "NOT_REGISTERED"
     """
 
     granted: bool
     reason: AccessReason
     staff_id: Optional[int] = None
-    role: Optional[Literal["ADMIN", "STAFF"]] = None
-    procurement_level: Optional[int] = None
+    role: Optional[Literal["PROCUREMENT_SUPERVISOR", "REGULAR_STAFF"]] = None
 
 
 def decide_access(
@@ -110,12 +110,11 @@ def _evaluate(staff: Optional[StaffRecord]) -> AccessDecision:
         return AccessDecision(granted=False, reason="NOT_VERIFIED")
     if not staff.active:
         return AccessDecision(granted=False, reason="INACTIVE")
-    if staff.procurement_level == 0:
-        return AccessDecision(granted=False, reason="LEVEL_ZERO")
+    if staff.role == "NON_STAFF":
+        return AccessDecision(granted=False, reason="NON_STAFF")
     return AccessDecision(
         granted=True,
         reason="GRANTED",
         staff_id=staff.staff_id,
-        role=staff.role,
-        procurement_level=staff.procurement_level,
+        role=staff.role,                                # type: ignore[arg-type]
     )

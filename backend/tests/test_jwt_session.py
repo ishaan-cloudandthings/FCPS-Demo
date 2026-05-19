@@ -40,8 +40,7 @@ def _issue(secure: bool = False) -> Response:
     issue_session_cookie(
         response,
         staff_id=42,
-        role="ADMIN",
-        procurement_level=3,
+        role="PROCUREMENT_SUPERVISOR",
         secret_key=SECRET,
         ttl_hours=4,
         secure=secure,
@@ -83,19 +82,19 @@ def test_issue_cookie_claims_allowlist_excludes_employee_id():
         issuer=JWT_ISSUER,
     )
 
+    # ADR-015: procurement_level is no longer part of the claim set.
     assert set(claims.keys()) == {
         "sub",
         "role",
-        "procurement_level",
         "iss",
         "aud",
         "iat",
         "exp",
     }
     assert "employee_id" not in claims
+    assert "procurement_level" not in claims
     assert claims["sub"] == "42"               # AC8-D5: string
-    assert claims["role"] == "ADMIN"
-    assert claims["procurement_level"] == 3
+    assert claims["role"] == "PROCUREMENT_SUPERVISOR"
     assert claims["iss"] == JWT_ISSUER
     assert claims["aud"] == JWT_AUDIENCE
     # exp - iat ≈ 4h, within a few seconds of skew.
@@ -111,8 +110,7 @@ def _make_token(secret: str = SECRET, alg: str = "HS256", **overrides) -> str:
     now = datetime.now(timezone.utc)
     claims = {
         "sub": "42",
-        "role": "ADMIN",
-        "procurement_level": 3,
+        "role": "PROCUREMENT_SUPERVISOR",
         "iss": JWT_ISSUER,
         "aud": JWT_AUDIENCE,
         "iat": int(now.timestamp()),
@@ -130,8 +128,7 @@ def test_verify_round_trip_returns_session_claims():
 
     assert isinstance(result, SessionClaims)
     assert result.staff_id == 42                # coerced back to int
-    assert result.role == "ADMIN"
-    assert result.procurement_level == 3
+    assert result.role == "PROCUREMENT_SUPERVISOR"
 
 
 def test_verify_rejects_expired_token():
@@ -169,8 +166,7 @@ def test_verify_rejects_wrong_algorithm():
     payload = base64.urlsafe_b64encode(
         json.dumps({
             "sub": "42",
-            "role": "ADMIN",
-            "procurement_level": 3,
+            "role": "PROCUREMENT_SUPERVISOR",
             "iss": JWT_ISSUER,
             "aud": JWT_AUDIENCE,
             "iat": int(datetime.now(timezone.utc).timestamp()),
@@ -202,7 +198,6 @@ def test_verify_rejects_token_missing_required_claim():
     claims = {
         "sub": "42",
         # "role" missing
-        "procurement_level": 3,
         "iss": JWT_ISSUER,
         "aud": JWT_AUDIENCE,
         "iat": int(now.timestamp()),
@@ -219,6 +214,6 @@ def test_verify_rejects_malformed_token():
 
 
 def test_verify_rejects_invalid_role_value():
-    token = _make_token(role="SUPERADMIN")
+    token = _make_token(role="SUPER_ROOT")
     with pytest.raises(SessionInvalid):
         verify_session_jwt(token, secret_key=SECRET)

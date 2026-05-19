@@ -12,8 +12,7 @@ import { useAuthStore } from "../store/auth.js";
 function renderDetail(itemId = 7) {
   useAuthStore.setState({
     status: "authenticated",
-    role: "ADMIN",
-    procurement_level: 3,
+    role: "PROCUREMENT_SUPERVISOR",
     staff_id: 1,
   });
   return render(

@@ -68,8 +68,8 @@ following constraints:
    | `not_registered`  | 403 + `X-Auth-Reason: NOT_REGISTERED` | — |
 
    > **2026-05-18 correction (AC-12)** — `staff_l2`'s `staff_id` was originally
-   > `2`, but DATA_MODEL.md §8 lists `staff_id=2` as FCPS-002 / James Okafor
-   > (a second ADMIN). Realigned to `6` (FCPS-006 / David Hernandez) so that
+   > `2`, but DATA_MODEL.md §8 lists `staff_id=2` as EMP-002 / James Okafor
+   > (a second ADMIN). Realigned to `6` (EMP-006 / David Hernandez) so that
    > a dev session's `staff_id` resolves to a row with the role/level it
    > claims, once AC-13 wires the real `/callback`. See
    > [AC-12 decision log](../decision-log/AC-12-seed-staff.md) AC12-D9.

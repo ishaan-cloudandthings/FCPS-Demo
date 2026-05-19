@@ -1,6 +1,6 @@
-# Architecture Decision Records — FCPS Procurement Portal
+# Architecture Decision Records — Staff Procurement Portal
 
-This folder records every architectural decision made for the FCPS Procurement
+This folder records every architectural decision made for the Staff Procurement
 Portal. `docs/ARCHITECTURE.md` §11 now points here.
 
 ## Numbering
@@ -27,6 +27,7 @@ inline ADR-001…ADR-003 entries that previously sat in `docs/ARCHITECTURE.md`
 | [ADR-012](ADR-012-bank-details-out-of-scope.md) | Bank details and audit logging out of scope for the demo | Accepted (supersedes ADR-006 `AUDIT_LOG` portion) | 2026-05-16 design review |
 | [ADR-013](ADR-013-api-responses-match-ui-display.md) | API responses match UI display — `contact_email` moved to detail-only | Accepted (resolves OQ-08) | 2026-05-16 architect review |
 | [ADR-014](ADR-014-demo-persona-login-dev-only.md) | Demo persona login for `dev` environments only | Accepted | 2026-05-18; scoped supersession of FR-01 inside dev only |
+| [ADR-015](ADR-015-role-model-simplification.md) | Role model simplification — 3 roles (`PROCUREMENT_SUPERVISOR`, `REGULAR_STAFF`, `NON_STAFF`); `PROCUREMENT_LEVEL` dropped | Accepted (supersedes D-03) | 2026-05-19 |
 
 ## ADR template
 

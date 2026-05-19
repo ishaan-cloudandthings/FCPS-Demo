@@ -98,7 +98,7 @@ describe("Login", () => {
       await screen.findByTestId("dev-persona-panel"),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /demo persona: admin/i }),
+      screen.getByRole("button", { name: /demo persona: procurement supervisor/i }),
     ).toBeInTheDocument();
   });
 
@@ -155,7 +155,7 @@ describe("Login", () => {
     );
 
     const adminButton = await screen.findByRole("button", {
-      name: /demo persona: admin/i,
+      name: /demo persona: procurement supervisor/i,
     });
     await userEvent.click(adminButton);
 
@@ -168,6 +168,6 @@ describe("Login", () => {
         init?.method === "POST",
     );
     expect(postCall).toBeDefined();
-    expect(JSON.parse(postCall[1].body)).toEqual({ persona: "admin_l3" });
+    expect(JSON.parse(postCall[1].body)).toEqual({ persona: "procurement_supervisor" });
   });
 });

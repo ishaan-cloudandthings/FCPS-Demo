@@ -13,7 +13,7 @@
  *   `useLocation().state?.reason` ∈ { "LEVEL_ZERO", "NOT_REGISTERED" }
  *   No state → defaults to LEVEL_ZERO (AC14-D2).
  *
- * Back-to-FCPS CTA (AC14-D3):
+ * Back-to-Staff Procurement Portal CTA (AC14-D3):
  *   POST /api/auth/logout → navigate("/"). Always in-app, never an
  *   external jump, per user direction (supersedes design rationale's
  *   optional FRONTEND_URL).
@@ -27,36 +27,39 @@ import { SkipLink } from "../components/SkipLink.jsx";
 import { apiFetch } from "../services/apiFetch.js";
 import { useAuthStore } from "../store/auth.js";
 
+// ADR-015: NON_STAFF replaced LEVEL_ZERO. Copy stays in the same spirit
+// (status message, non-alarming) but no longer references "procurement
+// clearance" (a level-era phrase).
 const COPY = {
-  LEVEL_ZERO: {
+  NON_STAFF: {
     heading: "You don't have access to this portal",
     sub:
-      "Your FCPS identity is verified, but your account doesn't have the procurement clearance needed to view vendor records.",
+      "Your identity is verified, but your account doesn't have access to the Staff Procurement Portal. Contact your procurement supervisor.",
   },
   NOT_REGISTERED: {
-    heading: "We can't sign you in",
+    heading: "Identity not verified",
     sub:
-      "Your identity has been verified, but you're not registered in the FCPS procurement system.",
+      "We couldn't verify your identity, so you do not have access to the portal. Contact your procurement supervisor.",
   },
 };
 
 export function AccessDenied() {
   useEffect(() => {
-    document.title = "Access Denied | FCPS Procurement";
+    document.title = "Access Denied | Staff Procurement";
   }, []);
 
   const location = useLocation();
   const navigate = useNavigate();
   const reset = useAuthStore((s) => s.setUnauthenticated);
 
-  // AC14-D2: default to LEVEL_ZERO when no route state is present.
+  // AC14-D2 + ADR-015: default to NON_STAFF when no route state is present.
   const rawReason = location.state?.reason;
-  const reason = rawReason in COPY ? rawReason : "LEVEL_ZERO";
+  const reason = rawReason in COPY ? rawReason : "NON_STAFF";
   const { heading, sub } = COPY[reason];
 
   const [busy, setBusy] = useState(false);
 
-  async function handleBackToFcps() {
+  async function handleBackToLogin() {
     setBusy(true);
     // POST /api/auth/logout is idempotent (AC-9): returns 204 even if
     // the session is already gone. We don't gate the navigate on the
@@ -119,12 +122,12 @@ export function AccessDenied() {
 
           <button
             type="button"
-            onClick={handleBackToFcps}
+            onClick={handleBackToLogin}
             disabled={busy}
-            aria-label="Back to FCPS — signs you out and returns to the FCPS site"
+            aria-label="Back to Staff Procurement Portal — signs you out and returns to the sign-in page"
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-btn-orange px-5 py-3 text-[0.9375rem] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.20)_inset,0_1px_2px_rgba(184,85,16,0.40),0_6px_16px_-4px_rgba(244,121,32,0.45)] transition hover:-translate-y-px focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-brand-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {busy ? "Signing out…" : "Back to FCPS"}
+            {busy ? "Signing out…" : "Back to Staff Procurement Portal"}
             {!busy && <ArrowIcon className="h-4 w-4" />}
           </button>
           <p className="mt-3 text-xs text-ink-subtle">

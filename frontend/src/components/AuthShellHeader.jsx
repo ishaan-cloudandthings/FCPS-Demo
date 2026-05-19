@@ -19,7 +19,7 @@ export function AuthShellHeader() {
         >
           F
         </span>
-        FCPS Vendor Procurement Portal
+        Staff Procurement Portal
       </span>
       <span className="text-xs text-ink-subtle">Built by Cloud &amp; Things</span>
     </header>

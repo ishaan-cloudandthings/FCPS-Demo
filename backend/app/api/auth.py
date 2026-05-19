@@ -88,8 +88,11 @@ def get_session_issuer(
 
     AC8-D2: the underlying `jwt_session.issue_session_cookie` takes
     `secret_key`, `ttl_hours`, and `secure` as extra kwargs. We bind them
-    here from Settings so the endpoint (and AC-7 mocks) keep the original
-    `(response, *, staff_id, role, procurement_level)` signature.
+    here from Settings so the endpoint (and AC-7 mocks) keep the
+    `(response, *, staff_id, role)` signature.
+
+    Per [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md),
+    `procurement_level` is no longer part of the session.
 
     Production: returns a closure over `issue_session_cookie` + settings.
     Tests: override to return a mock that records its call.
@@ -100,13 +103,11 @@ def get_session_issuer(
         *,
         staff_id: int,
         role,
-        procurement_level: int,
     ) -> None:
         issue_session_cookie(
             response,
             staff_id=staff_id,
             role=role,
-            procurement_level=procurement_level,
             secret_key=settings.jwt_secret_key,
             ttl_hours=settings.jwt_ttl_hours,
             secure=settings.jwt_cookie_secure,
@@ -178,12 +179,12 @@ def begin_login(
 _DETAIL_STATE_EXPIRED = "Authentication request expired. Please verify again."
 _DETAIL_IDME_UNREACHABLE = "Identity provider unreachable."
 _DETAIL_ID_TOKEN_INVALID = "Identity verification failed."
-_DETAIL_LEVEL_ZERO = (
-    "Access denied. Your account does not have procurement clearance."
+_DETAIL_NON_STAFF = (
+    "Access denied. Your account does not have portal access."
 )
 _DETAIL_NOT_REGISTERED = (
-    "Your identity has been verified but you are not registered in the "
-    "FCPS procurement system. Contact your procurement coordinator."
+    "Your identity could not be verified and you do not have access to "
+    "the portal."
 )
 # AC13-D6: shared with AC-6's state-cache-full 503 — single canonical copy.
 _DETAIL_SERVICE_UNAVAILABLE = (
@@ -213,7 +214,7 @@ def complete_login(
       2. Exchange `code` for token at ID.me /oauth/token.    → 502 on fail
       3. Validate ID token signature + claims (JWKS).        → 401 on fail
       4. Dispatch to `access_service.decide_access(sub)`.    → 403 on deny
-      5. Issue JWT cookie + return {role, procurement_level}.
+      5. Issue JWT cookie + return {role, staff_id}.
 
     Per AC7-D11: `sub` is treated as PII — never logged, never returned,
     never embedded in the JWT (the JWT carries `staff_id`).
@@ -286,9 +287,10 @@ def complete_login(
 
     if not decision.granted:
         # AC7-D9: map reason → X-Auth-Reason header value.
-        if decision.reason == "LEVEL_ZERO":
-            header_value = "LEVEL_ZERO"
-            detail = _DETAIL_LEVEL_ZERO
+        # ADR-015: NON_STAFF replaces LEVEL_ZERO.
+        if decision.reason == "NON_STAFF":
+            header_value = "NON_STAFF"
+            detail = _DETAIL_NON_STAFF
         else:
             # NOT_FOUND / NOT_VERIFIED / INACTIVE collapse to NOT_REGISTERED
             # — no account-existence enumeration.
@@ -303,25 +305,21 @@ def complete_login(
         )
 
     # ---- 5. Grant: issue JWT cookie + return body ----
-    # Stub call delegated to AC-8 (`jwt_session.issue_session_cookie`).
     session_issuer(
         response,
         staff_id=decision.staff_id,
         role=decision.role,
-        procurement_level=decision.procurement_level,
     )
 
     # AC7-D10: log the non-PII outcome only.
     logger.info(
-        "auth.callback.granted staff_id=%s role=%s level=%s",
+        "auth.callback.granted staff_id=%s role=%s",
         decision.staff_id,
         decision.role,
-        decision.procurement_level,
     )
 
     return SessionResponse(
         role=decision.role,
-        procurement_level=decision.procurement_level,
         staff_id=decision.staff_id,         # AC9-D4
     )
 
@@ -368,6 +366,5 @@ def get_current_session(
     """
     return SessionResponse(
         role=claims.role,
-        procurement_level=claims.procurement_level,
         staff_id=claims.staff_id,
     )

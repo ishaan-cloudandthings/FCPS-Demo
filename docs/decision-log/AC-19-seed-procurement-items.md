@@ -27,7 +27,7 @@ Jira description corrected as part of the commit.
 ## Synthetic-PII alert
 
 `CONTACT_NAME` and `CONTACT_EMAIL` are PII per DATA_MODEL.md §4.2. All
-synthetic per ADR-007. Email domain is `@test.com` (no `fcps`
+synthetic per ADR-007. Email domain is `@test.com` (no `spp`
 substring) — consistent with the AC-12 STAFF seed guardrail.
 
 ## Decisions
@@ -39,7 +39,7 @@ substring) — consistent with the AC-12 STAFF seed guardrail.
 | AC19-D3 | Seed count + breakdown | 15 rows matching DATA_MODEL.md §8: 5 APPROVED, 4 PENDING, 3 UNDER_REVIEW, 3 REJECTED. Categories drawn from the §8 enum (Technology, Facilities, Supplies, Services, Furniture). |
 | AC19-D4 | `APPROVED_AT` semantics | Non-null only for `STATUS='APPROVED'` rows. Other statuses get `None`. Dates spread across early 2026 so detail-page sorting is varied. |
 | AC19-D5 | Email synthesis | `firstname.lastname@vendor.test` for vendor contacts. Distinct from staff emails (`@test.com`) so a reader can tell vendor PII from staff PII at a glance. |
-| AC19-D6 | Tests | Mock `oracledb.connect`. Assert: DROP→CREATE→15 INSERTs; CREATE includes `APPROVED_AT` and excludes `BANK_DETAILS`; CHECK constraints on STATUS; row counts per status; no `@fcps.` substring in any email; APPROVED_AT is non-null iff status is APPROVED. |
+| AC19-D6 | Tests | Mock `oracledb.connect`. Assert: DROP→CREATE→15 INSERTs; CREATE includes `APPROVED_AT` and excludes `BANK_DETAILS`; CHECK constraints on STATUS; row counts per status; no `@spp.` substring in any email; APPROVED_AT is non-null iff status is APPROVED. |
 | AC19-D7 | `seed()` extension | `scripts.seed_oracle.seed()` continues to handle STAFF, and now also runs the PROCUREMENT_ITEMS pipeline in the same connection / transaction. Order: drop+create STAFF, drop+create PROCUREMENT_ITEMS, insert STAFF, insert PROCUREMENT_ITEMS, commit. |
 
 ## Files this story creates / modifies

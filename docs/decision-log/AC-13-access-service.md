@@ -11,6 +11,15 @@
 
 ## PII alert
 
+> **2026-05-19 supersession** — [ADR-015](../adr/ADR-015-role-model-simplification.md)
+> collapsed the role model to three roles (`PROCUREMENT_SUPERVISOR`,
+> `REGULAR_STAFF`, `NON_STAFF`) and dropped `PROCUREMENT_LEVEL` entirely.
+> Decisions ratified below remain on the historical record; the live code
+> base now reflects ADR-015. Concrete renames: `ADMIN` → `PROCUREMENT_SUPERVISOR`,
+> `STAFF` → `REGULAR_STAFF`, `LEVEL_ZERO` → `NON_STAFF`,
+> `procurement_level` removed from claims and queries.
+
+
 `sub` is the ID.me sub claim, which per [ADR-009](../adr/ADR-009-idme-sub-mapping.md) maps to `STAFF.EMPLOYEE_ID` — PII. Discipline (matches AC-11 / AC7-D11):
 
 * Parameter-bind only (delegated to `oracle_service.get_staff_by_employee_id`).

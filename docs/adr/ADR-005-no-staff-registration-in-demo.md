@@ -20,8 +20,8 @@ registration with name, work email, and employee ID"** as domain #1.
 
 None of the three discovery calls (2026-04-28, 2026-05-05, 2026-05-09) include a
 registration journey. The 2026-04-28 call confirmed the portal is **internal
-staff only**, with the two procurement coordinators and existing FCPS employees
-(teachers, department heads) — all of whom have pre-existing FCPS HR records.
+staff only**, with the two procurement coordinators and existing employees
+(teachers, department heads) — all of whom have pre-existing Staff Procurement Portal HR records.
 
 The 2026-05-09 call sealed this by specifying that the Oracle STAFF seed
 contains 10 pre-loaded records and that the ID.me callback **looks up** a row

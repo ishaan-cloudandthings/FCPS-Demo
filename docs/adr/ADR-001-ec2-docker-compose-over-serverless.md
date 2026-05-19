@@ -10,7 +10,7 @@
 
 ## Context
 
-The FCPS Procurement Portal demo needs a hosting target that can run the full
+The Staff Procurement Portal demo needs a hosting target that can run the full
 stack — React SPA, FastAPI backend, and Oracle XE — as a coherent unit and
 expose a stable public URL for the ID.me OAuth callback.
 
@@ -31,7 +31,7 @@ environments stay structurally identical.
 
 ## Decision
 
-Deploy the FCPS Procurement Portal on a single AWS EC2 instance (`t3.medium`)
+Deploy the Staff Procurement Portal on a single AWS EC2 instance (`t3.medium`)
 running Docker Compose. The compose file orchestrates three containers —
 Nginx + React, FastAPI (Uvicorn), and Oracle XE — on a shared Docker network.
 GitHub Actions performs an SSH-based deploy on merge to `main`.

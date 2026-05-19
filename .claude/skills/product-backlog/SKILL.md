@@ -3,7 +3,7 @@ name: product-backlog
 description: Build and groom a Product Backlog from a Functional Design or ARCHITECTURE.md. Produces a Markdown snapshot at docs/planning/product-backlog.md and creates epics + stories in Jira via the Atlassian MCP. Use when the PM agent needs to seed or refresh the backlog.
 ---
 
-# Skill: Product Backlog — FCPS Procurement Portal
+# Skill: Product Backlog — Staff Procurement Portal
 
 ## When to use this
 
@@ -17,15 +17,15 @@ You have a Functional Design document (or the existing ARCHITECTURE.md) and need
 
 ## Steps
 
-1. **Read the Functional Design.** Cluster user journeys into themes (= epics). For FCPS: Staff Registration, Identity Verification, Oracle HR Lookup, Access Decision, RBAC / Procurement Data.
+1. **Read the Functional Design.** Cluster user journeys into themes (= epics). For Staff Procurement Portal: Staff Registration, Identity Verification, Oracle HR Lookup, Access Decision, RBAC / Procurement Data.
 2. **For each theme**, list candidate user stories following the story-writing skill template.
 3. **Order by priority** using MoSCoW plus dependency order. Registration must precede verification; verification must precede access decision.
 4. **Print the proposed backlog** to the chat. Wait for explicit confirmation.
 5. **Write the Markdown snapshot** to `docs/planning/product-backlog.md`.
-6. **Create Jira epics and stories** using the Atlassian MCP. Project key: `FCPS`. Search for existing issues first to avoid duplicates.
+6. **Create Jira epics and stories** using the Atlassian MCP. Project key: `Staff Procurement Portal`. Search for existing issues first to avoid duplicates.
 7. **Print issue keys** back to the chat.
 
-## FCPS story dependency order (enforce this sequence)
+## Staff Procurement Portal story dependency order (enforce this sequence)
 
 ```
 Sprint 0 / Foundation

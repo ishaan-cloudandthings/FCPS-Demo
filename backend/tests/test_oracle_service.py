@@ -66,23 +66,21 @@ def _make_connection(*, fetchone_return=None, execute_raises=None) -> MagicMock:
     "row,expected",
     [
         (
-            (1, "FCPS-001", "ADMIN", 3, "Y", "Y"),
+            (1, "EMP-001", "PROCUREMENT_SUPERVISOR", "Y", "Y"),
             StaffRecord(
                 staff_id=1,
-                employee_id="FCPS-001",
-                role="ADMIN",
-                procurement_level=3,
+                employee_id="EMP-001",
+                role="PROCUREMENT_SUPERVISOR",
                 idme_verified=True,
                 active=True,
             ),
         ),
         (
-            (2, "FCPS-002", "STAFF", 2, "Y", "Y"),
+            (2, "EMP-002", "REGULAR_STAFF", "Y", "Y"),
             StaffRecord(
                 staff_id=2,
-                employee_id="FCPS-002",
-                role="STAFF",
-                procurement_level=2,
+                employee_id="EMP-002",
+                role="REGULAR_STAFF",
                 idme_verified=True,
                 active=True,
             ),
@@ -90,14 +88,25 @@ def _make_connection(*, fetchone_return=None, execute_raises=None) -> MagicMock:
         (
             # N/N — inactive and unverified, still maps cleanly (the access
             # decision happens in access_service, not here).
-            (7, "FCPS-007", "STAFF", 1, "N", "N"),
+            (7, "EMP-007", "REGULAR_STAFF", "N", "N"),
             StaffRecord(
                 staff_id=7,
-                employee_id="FCPS-007",
-                role="STAFF",
-                procurement_level=1,
+                employee_id="EMP-007",
+                role="REGULAR_STAFF",
                 idme_verified=False,
                 active=False,
+            ),
+        ),
+        # ADR-015: NON_STAFF is a valid row value — the row maps cleanly,
+        # the denial happens in access_service.
+        (
+            (10, "EMP-010", "NON_STAFF", "Y", "Y"),
+            StaffRecord(
+                staff_id=10,
+                employee_id="EMP-010",
+                role="NON_STAFF",
+                idme_verified=True,
+                active=True,
             ),
         ),
     ],
@@ -133,7 +142,7 @@ def test_sql_string_constant_has_no_format_placeholders():
 
 def test_get_staff_by_employee_id_returns_none_when_no_row():
     conn = _make_connection(fetchone_return=None)
-    assert get_staff_by_employee_id(conn, "FCPS-404") is None
+    assert get_staff_by_employee_id(conn, "EMP-404") is None
 
 
 # ---------------------------------------------------------------------------
@@ -147,27 +156,30 @@ def test_database_error_raises_oracle_unavailable():
     )
 
     with pytest.raises(OracleUnavailable):
-        get_staff_by_employee_id(conn, "FCPS-001")
+        get_staff_by_employee_id(conn, "EMP-001")
 
 
 @pytest.mark.parametrize(
     "row",
     [
         # ROLE not in allowlist.
-        (1, "FCPS-001", "SUPERADMIN", 3, "Y", "Y"),
+        (1, "EMP-001", "SUPERADMIN", "Y", "Y"),
+        # Legacy ROLE values rejected (ADR-015).
+        (1, "EMP-001", "ADMIN", "Y", "Y"),
+        (1, "EMP-001", "STAFF", "Y", "Y"),
         # IDME_VERIFIED not in {Y, N}.
-        (1, "FCPS-001", "ADMIN", 3, "MAYBE", "Y"),
+        (1, "EMP-001", "PROCUREMENT_SUPERVISOR", "MAYBE", "Y"),
         # ACTIVE not in {Y, N}.
-        (1, "FCPS-001", "ADMIN", 3, "Y", "TRUE"),
+        (1, "EMP-001", "PROCUREMENT_SUPERVISOR", "Y", "TRUE"),
         # Too few columns — schema drift.
-        (1, "FCPS-001", "ADMIN", 3, "Y"),
+        (1, "EMP-001", "PROCUREMENT_SUPERVISOR", "Y"),
     ],
 )
 def test_bad_row_shape_raises_schema_error(row):
     conn = _make_connection(fetchone_return=row)
 
     with pytest.raises(OracleSchemaError):
-        get_staff_by_employee_id(conn, "FCPS-001")
+        get_staff_by_employee_id(conn, "EMP-001")
 
 
 # ---------------------------------------------------------------------------
@@ -182,13 +194,13 @@ def test_employee_id_is_never_in_logs(caplog):
     We exercise found / not_found / unavailable / schema_error all in
     one test and assert across them.
     """
-    employee_id = "FCPS-SENSITIVE-001"
+    employee_id = "EMP-SENSITIVE-001"
 
     caplog.set_level(logging.DEBUG, logger="app.services.oracle_service")
 
     # Path 1 — found.
     conn_found = _make_connection(
-        fetchone_return=(1, employee_id, "ADMIN", 3, "Y", "Y"),
+        fetchone_return=(1, employee_id, "PROCUREMENT_SUPERVISOR", "Y", "Y"),
     )
     get_staff_by_employee_id(conn_found, employee_id)
 
@@ -207,7 +219,7 @@ def test_employee_id_is_never_in_logs(caplog):
 
     # Path 4 — schema error.
     conn_bad = _make_connection(
-        fetchone_return=(1, employee_id, "SUPERADMIN", 3, "Y", "Y"),
+        fetchone_return=(1, employee_id, "SUPERADMIN", "Y", "Y"),
     )
     try:
         get_staff_by_employee_id(conn_bad, employee_id)
@@ -225,14 +237,14 @@ def test_employee_id_hash_appears_in_log_line(caplog):
     """
     caplog.set_level(logging.INFO, logger="app.services.oracle_service")
     conn = _make_connection(
-        fetchone_return=(1, "FCPS-001", "ADMIN", 3, "Y", "Y"),
+        fetchone_return=(1, "EMP-001", "PROCUREMENT_SUPERVISOR", "Y", "Y"),
     )
-    get_staff_by_employee_id(conn, "FCPS-001")
+    get_staff_by_employee_id(conn, "EMP-001")
 
-    # sha256("FCPS-001")[:12] = "4cd16fda6d4d" — pin the prefix.
+    # sha256("EMP-001")[:12] = "4cd16fda6d4d" — pin the prefix.
     import hashlib
 
-    expected_hash = hashlib.sha256(b"FCPS-001").hexdigest()[:12]
+    expected_hash = hashlib.sha256(b"EMP-001").hexdigest()[:12]
     assert f"employee_id_hash={expected_hash}" in caplog.text
     assert "outcome=found" in caplog.text
 

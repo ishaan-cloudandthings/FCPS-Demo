@@ -30,11 +30,11 @@ import { useAuthStore } from "../store/auth.js";
 // Persona list driving the dev-only panel.
 // See ADR-014 and docs/decision-log/DEV-AUTH-persona-picker.md (DEV12).
 // Order matches the demo narrative: granted personas first, denied last.
+// ADR-015 — three business roles + the not-registered technical denial.
 const DEV_PERSONAS = [
-  { key: "admin_l3", label: "Admin", denied: false },
-  { key: "staff_l2", label: "Staff L2", denied: false },
-  { key: "staff_l1", label: "Staff L1", denied: false },
-  { key: "level_zero", label: "Level 0", denied: true },
+  { key: "procurement_supervisor", label: "Procurement Supervisor", denied: false },
+  { key: "regular_staff",          label: "Regular Staff",          denied: false },
+  { key: "non_staff",              label: "Non-staff",              denied: true },
   { key: "not_registered", label: "Not registered", denied: true },
 ];
 
@@ -58,7 +58,7 @@ const BANNERS = {
 
 export function Login() {
   useEffect(() => {
-    document.title = "Login | FCPS Procurement";
+    document.title = "Login | Staff Procurement";
   }, []);
 
   const [params] = useSearchParams();
@@ -108,7 +108,7 @@ function BrandPanel() {
       <div>
         <div className="mb-6 flex items-center gap-2 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-brand-orange-500">
           <span className="inline-block h-0.5 w-4 rounded-full bg-brand-orange-500" />
-          FCPS Procurement
+          Staff Procurement
         </div>
         <h1 className="mb-4 max-w-md text-4xl font-bold leading-[1.12] tracking-tight">
           Approved vendors,
@@ -118,7 +118,7 @@ function BrandPanel() {
           </em>
         </h1>
         <p className="max-w-[30ch] text-[0.9375rem] leading-relaxed text-white/80">
-          Find, verify, and contact the vendors FCPS has cleared — without
+          Find, verify, and contact the vendors Staff Procurement Portal has cleared — without
           sending a single email.
         </p>
       </div>
@@ -211,14 +211,14 @@ function SigninPanel({ banner, isReturning }) {
         <p className="mb-7 text-[0.9375rem] leading-relaxed text-ink-muted">
           {isReturning
             ? "Verify with ID.me to pick up where you left off."
-            : "Use your FCPS-verified ID.me account to continue."}
+            : "Use your verified ID.me account to continue."}
         </p>
 
         {/* Identity policy callout — informational (blue), not action-required. */}
         <div className="mb-7 flex items-start gap-3 rounded-lg border border-brand-blue-100 bg-brand-blue-50 px-4 py-3">
           <InfoIcon className="h-5 w-5 shrink-0 text-brand-blue-500" />
           <p className="m-0 text-[0.8125rem] leading-snug text-brand-blue-900">
-            Access to the FCPS Vendor Procurement Portal requires verified FCPS
+            Access to the Staff Procurement Portal requires verified Staff Procurement Portal
             employee identity.
           </p>
         </div>

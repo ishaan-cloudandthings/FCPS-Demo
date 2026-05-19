@@ -11,6 +11,15 @@
 
 ## What's in this file
 
+> **2026-05-19 supersession** — [ADR-015](../adr/ADR-015-role-model-simplification.md)
+> collapsed the role model to three roles (`PROCUREMENT_SUPERVISOR`,
+> `REGULAR_STAFF`, `NON_STAFF`) and dropped `PROCUREMENT_LEVEL` entirely.
+> Decisions ratified below remain on the historical record; the live code
+> base now reflects ADR-015. Concrete renames: `ADMIN` → `PROCUREMENT_SUPERVISOR`,
+> `STAFF` → `REGULAR_STAFF`, `LEVEL_ZERO` → `NON_STAFF`,
+> `procurement_level` removed from claims and queries.
+
+
 Per `AI_POLICY.md` § 🔴 Red rules, every decision is on record before
 code is written. This file captures:
 
@@ -24,7 +33,7 @@ code is written. This file captures:
 | ID | Decision |
 |---|---|
 | **D-FD-01** | Algorithm: **HS256** (matches `python-jose` default + ARCHITECTURE.md `JWT_ALGORITHM`). Asymmetric algorithms rejected for a single-host demo. |
-| **D-FD-02** | Claims: `{ sub=staff_id, role, procurement_level, iat, exp, iss="fcps-portal", aud="fcps-portal-web" }`. `EMPLOYEE_ID` is NOT included (REQUIREMENTS.md D-07). |
+| **D-FD-02** | Claims: `{ sub=staff_id, role, procurement_level, iat, exp, iss="spp-portal", aud="spp-portal-web" }`. `EMPLOYEE_ID` is NOT included (REQUIREMENTS.md D-07). |
 | **D-FD-03** | Expiry: `exp = iat + JWT_TTL_HOURS × 3600`. Default 4. Reads env at startup; no hot-reload. |
 | **D-FD-04** | Cookie attributes: `HttpOnly`, `SameSite=Lax`, `Path=/`. `Secure` flag env-driven (`JWT_COOKIE_SECURE`, default `false`) — flips to `true` when HTTPS lands (ADR-008). |
 | **D-FD-05** | Secret rotation out of scope. `JWT_SECRET_KEY` env var only. Any change requires redeploy and invalidates all sessions (acceptable). |
@@ -40,7 +49,7 @@ code is written. This file captures:
 | AC8-D3 | `SessionClaims` dataclass | Frozen dataclass: `staff_id: int`, `role: Literal["ADMIN","STAFF"]`, `procurement_level: int`. Lives in `app/auth/jwt_session.py`. |
 | AC8-D4 | Cookie name | `"session"` — matches the value AC-7's `mock_session_issuer` writes for test compatibility. |
 | AC8-D5 | JWT `sub` format | `str(staff_id)` — JWT convention is for `sub` to be a string. The verifier coerces back to `int`. |
-| AC8-D6 | `iss` and `aud` | `iss="fcps-portal"`, `aud="fcps-portal-web"`. Hard-coded constants — internal namespacing, not deployment-variable. |
+| AC8-D6 | `iss` and `aud` | `iss="spp-portal"`, `aud="spp-portal-web"`. Hard-coded constants — internal namespacing, not deployment-variable. |
 | AC8-D7 | Dependencies module | `app/auth/dependencies.py` per FUNCTIONAL_DESIGN.md §6.3. Three Depends factories: `require_authenticated`, `require_role`, `require_level`. |
 | AC8-D8 | `require_authenticated` failure mode | **Same 401 + body for ANY failure** (missing cookie / malformed / expired / bad signature / bad alg). Body `{"detail": "Session invalid or expired."}`. No enumeration about which check failed. Server-side log distinguishes via `err=...`. |
 | AC8-D9 | `require_role` / `require_level` failure | 403 + `X-Auth-Reason: ROLE_FORBIDDEN` + body `{"detail": "You do not have permission to view this resource."}`. Matches FUNCTIONAL_DESIGN.md §10 error model. |

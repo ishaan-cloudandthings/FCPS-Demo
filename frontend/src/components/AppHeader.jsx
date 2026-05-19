@@ -12,9 +12,15 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../services/apiFetch.js";
 import { useAuthStore } from "../store/auth.js";
 
+// ADR-015 — human-readable labels for the role enum.
+const ROLE_LABEL = {
+  PROCUREMENT_SUPERVISOR: "Procurement Supervisor",
+  REGULAR_STAFF: "Regular Staff",
+};
+
 export function AppHeader() {
   const navigate = useNavigate();
-  const { role, procurement_level, staff_id } = useAuthStore();
+  const { role, staff_id } = useAuthStore();
   const setUnauthenticated = useAuthStore((s) => s.setUnauthenticated);
 
   const [busy, setBusy] = useState(false);
@@ -42,7 +48,7 @@ export function AppHeader() {
         >
           F
         </span>
-        FCPS Vendor Procurement Portal
+        Staff Procurement Portal
       </span>
       <div className="flex items-center gap-4">
         <span
@@ -51,9 +57,7 @@ export function AppHeader() {
         >
           <span className="font-semibold">Signed in</span>
           <span aria-hidden="true">·</span>
-          <span>{role}</span>
-          <span aria-hidden="true">·</span>
-          <span>L{procurement_level}</span>
+          <span>{ROLE_LABEL[role] ?? role}</span>
           <span aria-hidden="true">·</span>
           <span>#{staff_id}</span>
         </span>

@@ -25,10 +25,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Length-32+ string so the existing `min_length=32` check still binds when
 # someone overrides via env var with a too-short value.
 _DEMO_JWT_SECRET = (
-    "fcps-demo-only-jwt-secret-rotate-before-any-prod-use-32+chars"
+    "spp-demo-only-jwt-secret-rotate-before-any-prod-use-32+chars"
 )
-_DEMO_ORACLE_USER = "fcps_demo_user"
-_DEMO_ORACLE_PASSWORD = "fcps_demo_password"
+_DEMO_ORACLE_USER = "spp_demo_user"
+_DEMO_ORACLE_PASSWORD = "spp_demo_password"
 _DEMO_IDME_CLIENT_ID = "demo-client-id"
 _DEMO_IDME_CLIENT_SECRET = "demo-client-secret"
 

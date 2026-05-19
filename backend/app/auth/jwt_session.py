@@ -3,21 +3,23 @@
 
 Ratified decisions live in:
     docs/decision-log/AC-8-jwt.md
-    (D-FD-01..07 from FUNCTIONAL_DESIGN.md §6.4 + AC8-D1..D14)
+    docs/adr/ADR-015-role-model-simplification.md  ← role model collapse
 
 This module is the single source of truth for the session JWT contract:
 
 * Issue (AC8-D2): `issue_session_cookie` signs an HS256 JWT with claims
-  `{sub=str(staff_id), role, procurement_level, iss="fcps-portal",
-  aud="fcps-portal-web", iat, exp}` and attaches it as the `session`
-  cookie — `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` env-driven.
+  `{sub=str(staff_id), role, iss="spp-portal", aud="spp-portal-web",
+  iat, exp}` and attaches it as the `session` cookie — `HttpOnly`,
+  `SameSite=Lax`, `Path=/`, `Secure` env-driven. Per
+  [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md),
+  `procurement_level` is no longer part of the claim set.
 * Verify (AC8-D10): `verify_session_jwt` calls
   `jose.jwt.decode(..., algorithms=["HS256"], ...)` — explicit allowlist
   defends against algorithm-confusion attacks. Never trusts the header's
   `alg`. Returns a frozen `SessionClaims` on success; any failure raises
   `SessionInvalid` so the dependency layer can collapse all 401 causes
   into a single user-facing response (AC8-D8).
-* Logging (AC8-D13): `jwt.issued staff_id=… role=… level=…` on success;
+* Logging (AC8-D13): `jwt.issued staff_id=… role=…` on success;
   `jwt.verify_failed err=<error_class>` on failure. The token itself is
   NEVER logged.
 """
@@ -39,25 +41,31 @@ logger = get_logger(__name__)
 COOKIE_NAME: str = "session"                 # AC8-D4
 COOKIE_SAMESITE: str = "lax"                 # D-FD-04
 COOKIE_PATH: str = "/"                       # D-FD-04
-JWT_ISSUER: str = "fcps-portal"              # AC8-D6
-JWT_AUDIENCE: str = "fcps-portal-web"        # AC8-D6
+JWT_ISSUER: str = "spp-portal"              # AC8-D6
+JWT_AUDIENCE: str = "spp-portal-web"        # AC8-D6
 ALLOWED_ALGORITHMS: list[str] = ["HS256"]    # AC8-D10 / D-FD-01
 CLOCK_SKEW_SECONDS: int = 30                 # D-FD-06
 
-SessionRole = Literal["ADMIN", "STAFF"]
-_VALID_ROLES: frozenset[str] = frozenset({"ADMIN", "STAFF"})
+# ADR-015: SessionRole is one of the two granted business roles. NON_STAFF
+# users never reach this code path — they are denied at /api/auth/callback.
+SessionRole = Literal["PROCUREMENT_SUPERVISOR", "REGULAR_STAFF"]
+_VALID_ROLES: frozenset[str] = frozenset(
+    {"PROCUREMENT_SUPERVISOR", "REGULAR_STAFF"}
+)
 
 
 @dataclass(frozen=True)
 class SessionClaims:
     """Decoded, validated session claims. AC8-D3.
 
+    Per [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md),
+    `procurement_level` is removed. Role is the single authority axis.
+
     Never constructed directly by callers — `verify_session_jwt` is the
     only producer. The frozen dataclass makes it safe to pass around.
     """
     staff_id: int
     role: SessionRole
-    procurement_level: int
 
 
 class SessionInvalid(Exception):
@@ -74,7 +82,6 @@ def issue_session_cookie(
     *,
     staff_id: int,
     role: SessionRole,
-    procurement_level: int,
     secret_key: str,
     ttl_hours: int,
     secure: bool,
@@ -87,6 +94,7 @@ def issue_session_cookie(
 
     Claims layout is fixed by D-FD-02 and AC8-D12 (claims allowlist test).
     EMPLOYEE_ID is deliberately NOT included (REQUIREMENTS.md D-07).
+    `procurement_level` removed by ADR-015.
     """
     now = datetime.now(timezone.utc)
     expires = now + timedelta(hours=ttl_hours)
@@ -94,7 +102,6 @@ def issue_session_cookie(
     claims = {
         "sub": str(staff_id),               # AC8-D5: JWT convention — sub is a string
         "role": role,
-        "procurement_level": procurement_level,
         "iss": JWT_ISSUER,                  # AC8-D6
         "aud": JWT_AUDIENCE,                # AC8-D6
         "iat": int(now.timestamp()),
@@ -115,12 +122,7 @@ def issue_session_cookie(
     )
 
     # AC8-D13: log non-PII outcome. NEVER log the token itself.
-    logger.info(
-        "jwt.issued staff_id=%s role=%s level=%s",
-        staff_id,
-        role,
-        procurement_level,
-    )
+    logger.info("jwt.issued staff_id=%s role=%s", staff_id, role)
 
 
 def delete_session_cookie(response: Response, *, secure: bool) -> None:
@@ -165,9 +167,8 @@ def verify_session_jwt(token: str, *, secret_key: str) -> SessionClaims:
     # our application-specific shape. Enforce that here.
     sub = claims.get("sub")
     role = claims.get("role")
-    level = claims.get("procurement_level")
 
-    if sub is None or role is None or level is None:
+    if sub is None or role is None:
         logger.warning("jwt.verify_failed err=MissingClaim")
         raise SessionInvalid("missing required claim")
 
@@ -181,13 +182,7 @@ def verify_session_jwt(token: str, *, secret_key: str) -> SessionClaims:
         logger.warning("jwt.verify_failed err=BadRole")
         raise SessionInvalid(f"role {role!r} not in allowlist")
 
-    if not isinstance(level, int) or isinstance(level, bool):
-        # bool is a subclass of int — exclude it explicitly.
-        logger.warning("jwt.verify_failed err=BadLevel")
-        raise SessionInvalid("procurement_level must be int")
-
     return SessionClaims(
         staff_id=staff_id,
         role=role,                                   # type: ignore[arg-type]
-        procurement_level=level,
     )

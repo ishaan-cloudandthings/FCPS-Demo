@@ -11,6 +11,15 @@
 
 ## What's in this file
 
+> **2026-05-19 supersession** — [ADR-015](../adr/ADR-015-role-model-simplification.md)
+> collapsed the role model to three roles (`PROCUREMENT_SUPERVISOR`,
+> `REGULAR_STAFF`, `NON_STAFF`) and dropped `PROCUREMENT_LEVEL` entirely.
+> Decisions ratified below remain on the historical record; the live code
+> base now reflects ADR-015. Concrete renames: `ADMIN` → `PROCUREMENT_SUPERVISOR`,
+> `STAFF` → `REGULAR_STAFF`, `LEVEL_ZERO` → `NON_STAFF`,
+> `procurement_level` removed from claims and queries.
+
+
 ADR-014 captures the architectural decision. This file captures the
 **code-level** ratified decisions DEV1 … DEV13 — the things a contributor
 opening `dev_auth.py` needs to find to defend any line of code in there.
@@ -21,7 +30,7 @@ opening `dev_auth.py` needs to find to defend any line of code in there.
 |---|---|---|
 | DEV1 | Router location | New file `backend/app/api/dev_auth.py` with prefix `/api/auth`. Routes: `POST /api/auth/dev-login` and `GET /api/auth/dev-login/available`. Colocated with the real auth surface so a reader of `app/api/` sees the full auth picture in one folder. |
 | DEV2 | Env-gate (defence in depth) | **Boot-time:** `main.py` only `include_router(dev_auth.router)` when `settings.environment == "dev"`. **Request-time:** every handler re-reads `settings.environment` and raises `HTTPException(404)` if not dev. 404, not 403 — indistinguishable from "endpoint does not exist". |
-| DEV3 | Persona table | `admin_l3` → 200 + session `{staff_id=1, ADMIN, L3}` (FCPS-001). `staff_l2` → 200 + `{staff_id=6, STAFF, L2}` (FCPS-006). `staff_l1` → 200 + `{staff_id=3, STAFF, L1}` (FCPS-003). `level_zero` → 403 + `X-Auth-Reason: LEVEL_ZERO` + body matching `_DETAIL_LEVEL_ZERO`. `not_registered` → 403 + `X-Auth-Reason: NOT_REGISTERED` + body matching `_DETAIL_NOT_REGISTERED`. Both denied-bodies imported from `app.api.auth` so they cannot drift. **Updated 2026-05-18**: staff_l2 staff_id changed from `2` to `6` to align with the AC-12 seed (DATA_MODEL.md §8 — staff_id=2 is actually a second ADMIN, not STAFF L2). See AC12-D9. |
+| DEV3 | Persona table | `admin_l3` → 200 + session `{staff_id=1, ADMIN, L3}` (EMP-001). `staff_l2` → 200 + `{staff_id=6, STAFF, L2}` (EMP-006). `staff_l1` → 200 + `{staff_id=3, STAFF, L1}` (EMP-003). `level_zero` → 403 + `X-Auth-Reason: LEVEL_ZERO` + body matching `_DETAIL_LEVEL_ZERO`. `not_registered` → 403 + `X-Auth-Reason: NOT_REGISTERED` + body matching `_DETAIL_NOT_REGISTERED`. Both denied-bodies imported from `app.api.auth` so they cannot drift. **Updated 2026-05-18**: staff_l2 staff_id changed from `2` to `6` to align with the AC-12 seed (DATA_MODEL.md §8 — staff_id=2 is actually a second ADMIN, not STAFF L2). See AC12-D9. |
 | DEV4 | Probe endpoint | `GET /api/auth/dev-login/available` → 200 `{"available": true}` in dev, 404 otherwise. SPA renders the persona panel only on 200. |
 | DEV5 | Session-issue path | Reuses `Depends(get_session_issuer)` — same `issue_session_cookie` as `/callback` (AC-7/AC-8). Cookie attributes and JWT claims inherit AC-8 verbatim. No second JWT format. |
 | DEV6 | Auth requirement | None — endpoint is unauthenticated by design (it mints sessions). Calling twice replaces the cookie — idempotent. |

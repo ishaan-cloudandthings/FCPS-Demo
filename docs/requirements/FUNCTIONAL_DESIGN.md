@@ -1,4 +1,4 @@
-# Functional Design — FCPS Vendor Procurement Portal (Demo)
+# Functional Design — Staff Procurement Portal (Demo)
 
 | Field | Value |
 |---|---|
@@ -81,8 +81,9 @@ returned, or rendered anywhere.*
 
 Single EC2 t3.medium running Docker Compose (Nginx, FastAPI Uvicorn, Oracle XE 21c).
 React SPA served by Nginx on `:80`; FastAPI on `:8000`; Oracle internal-only on `:1521`.
-Identity proved by ID.me (sandbox). Authorisation derived from Oracle `STAFF.ROLE` +
-`STAFF.PROCUREMENT_LEVEL`. JWT in `HttpOnly; SameSite=Lax` cookie carries session.
+Identity proved by ID.me (sandbox). Authorisation derived from a single
+Oracle field — `STAFF.ROLE` — per [ADR-015](../adr/ADR-015-role-model-simplification.md).
+JWT in `HttpOnly; SameSite=Lax` cookie carries session.
 
 ```
 Browser ──HTTPS (HTTP for demo)──► Nginx :80
@@ -103,9 +104,9 @@ Resolving conflict C-04 explicitly:
 | `/verification/callback?code=…&state=…` | Nginx (SPA) | OAuth return page — the React component extracts `code` + `state` and POSTs them to the backend. Public URL because ID.me must redirect a browser. |
 | `/vendors` | Nginx (SPA) | Staff/Admin vendor list (route guarded) |
 | `/vendors/{id}` | Nginx (SPA) | Admin vendor detail (route guarded) |
-| `/access-denied` | Nginx (SPA) | LEVEL 0 landing |
+| `/access-denied` | Nginx (SPA) | NON_STAFF landing |
 | `/api/auth/login` | FastAPI | Returns ID.me authorisation URL with server-generated `state` |
-| `/api/auth/callback` | FastAPI | Code+state exchange; sets JWT cookie; returns `{ role, procurement_level }` |
+| `/api/auth/callback` | FastAPI | Code+state exchange; sets JWT cookie; returns `{ role, staff_id }` |
 | `/api/auth/logout` | FastAPI | Clears JWT cookie; 204 |
 | `/api/auth/me` | FastAPI | Returns current session claims; used by SPA on page load |
 | `/api/vendors` | FastAPI | RBAC-filtered list |
@@ -129,9 +130,9 @@ Endpoints:
 
 ```
 POST /api/auth/login            → 200 { authorize_url }
-POST /api/auth/callback         → 200 { role, procurement_level }   sets cookie
+POST /api/auth/callback         → 200 { role, staff_id }            sets cookie
 POST /api/auth/logout           → 204                                  clears cookie
-GET  /api/auth/me               → 200 { role, procurement_level, staff_id }
+GET  /api/auth/me               → 200 { role, staff_id }
                                   401 if no/invalid cookie
 ```
 
@@ -152,7 +153,7 @@ Behaviour summary (decisions surfaced for Red Zone approval):
   Signature verification uses ID.me JWKS (cached in-process for 60 min). If validation
   fails → 401 `{"detail": "Identity verification failed."}`.
 - **D-FD-12** After validation, the handler calls `access_service.decide_access(sub)`
-  (see §6.6) and either sets the JWT cookie + returns `{role, procurement_level}` or
+  (see §6.6) and either sets the JWT cookie + returns `{role, staff_id}` or
   returns 403 with the appropriate user-facing copy from FR-04.
 
 Logout simply calls `response.delete_cookie("session", ...)` and returns 204.
@@ -175,10 +176,12 @@ GET  /api/auth/dev-login/available    → 200 in dev, 404 otherwise (probe)
 
 Both routes are mounted by `main.py` only when `settings.environment == "dev"`,
 and every handler re-checks at request time and raises 404 if not. The five
-hardcoded personas (`admin_l3`, `staff_l2`, `staff_l1`, `level_zero`,
-`not_registered`) mint sessions via the exact same `issue_session_cookie` /
-`get_session_issuer` path as `/callback` — no second JWT format, no new cookie
-semantics. Code-level decisions DEV1 … DEV13 are in
+hardcoded personas (`procurement_supervisor`, `regular_staff`,
+`non_staff`, `not_registered`) mint sessions via the exact same
+`issue_session_cookie` / `get_session_issuer` path as `/callback` — no
+second JWT format, no new cookie semantics. Per [ADR-015](../adr/ADR-015-role-model-simplification.md)
+the persona list collapsed from five to four (three business roles + the
+NOT_REGISTERED technical denial). Code-level decisions DEV1 … DEV13 are in
 [`docs/decision-log/DEV-AUTH-persona-picker.md`](../decision-log/DEV-AUTH-persona-picker.md).
 This endpoint MUST NOT be present in any non-dev deployment; FR-01 stands outside
 `dev` (the supersession is environment-scoped, not requirement-scoped).
@@ -187,16 +190,17 @@ This endpoint MUST NOT be present in any non-dev deployment; FR-01 stands outsid
 
 ```
 GET  /api/vendors          → 200 [VendorListItem]
-GET  /api/vendors/{id}     → 200 VendorDetail     (ADMIN only)
-                             403 if role != ADMIN
+GET  /api/vendors/{id}     → 200 VendorDetail     (PROCUREMENT_SUPERVISOR only)
+                             403 if role != PROCUREMENT_SUPERVISOR
                              404 if vendor not found
 ```
 
 Both endpoints are protected by `Depends(require_authenticated)` (see §6.4). The
-detail endpoint additionally depends on `Depends(require_role("ADMIN"))`.
+detail endpoint additionally depends on `Depends(require_role("PROCUREMENT_SUPERVISOR"))`.
 
 The list endpoint always returns 200 — an empty list is a valid response and the
-frontend renders the empty state. The list shape is **level-aware**: see §6.7.
+frontend renders the empty state. The list shape is **role-aware** (per ADR-015,
+no longer level-aware): see §6.7.
 
 The detail endpoint is a simple admin-only read. *Earlier drafts wrote an
 `AUDIT_LOG` row before serialising — that posture was removed by ADR-012
@@ -206,16 +210,19 @@ along with the `audit_service` module and the entire audit-log table.*
 
 ```python
 def require_authenticated(request: Request) -> SessionClaims: ...
-def require_role(role: Literal["ADMIN", "STAFF"]): ...
-def require_level(min_level: int): ...
+def require_role(*allowed: Literal["PROCUREMENT_SUPERVISOR", "REGULAR_STAFF"]): ...
 ```
 
 `require_authenticated` reads the cookie, verifies the JWT signature and `exp`,
-returns a typed `SessionClaims(staff_id, role, procurement_level)`. On any failure
-it raises `HTTPException(401, "Session invalid or expired.")`.
+returns a typed `SessionClaims(staff_id, role)`. On any failure it raises
+`HTTPException(401, "Session invalid or expired.")`.
 
-`require_role` and `require_level` are factories that return dependencies which raise
-403 if the claim does not match. The frontend never sees a distinction between
+Per [ADR-015](../adr/ADR-015-role-model-simplification.md), the legacy
+`require_level(min_level)` factory was removed along with `PROCUREMENT_LEVEL`;
+role is the single authority axis now.
+
+`require_role` is a factory that returns a dependency which raises 403
+if the claim does not match. The frontend never sees a distinction between
 "missing cookie" and "expired cookie" — both surface as 401 with the same user-facing
 message (`FR-08`).
 
@@ -225,7 +232,7 @@ Decisions surfaced for Red Zone approval:
 
 - **D-FD-01** Algorithm: HS256 (matches `python-jose` default and `ARCHITECTURE.md`
   env var `JWT_ALGORITHM`). Asymmetric algorithms rejected for a single-host demo.
-- **D-FD-02** Claims: `{ sub: staff_id, role, procurement_level, iat, exp, iss: "fcps-portal", aud: "fcps-portal-web" }`. `EMPLOYEE_ID` is **not** included (REQUIREMENTS D-07).
+- **D-FD-02** Claims: `{ sub: staff_id, role, iat, exp, iss: "spp-portal", aud: "spp-portal-web" }`. `EMPLOYEE_ID` is **not** included (REQUIREMENTS D-07). `procurement_level` was removed by [ADR-015](../adr/ADR-015-role-model-simplification.md).
 - **D-FD-03** Expiry: `exp = iat + JWT_TTL_HOURS * 3600`. Default 4. Reads env at
   startup; does not hot-reload.
 - **D-FD-04** Cookie attributes: `HttpOnly`, `SameSite=Lax`, `Path=/`. `Secure=False`
@@ -261,7 +268,7 @@ router/service layer maps to Pydantic response schemas (see §6.9).
 `get_staff_by_employee_id` query:
 
 ```sql
-SELECT STAFF_ID, EMPLOYEE_ID, ROLE, PROCUREMENT_LEVEL, IDME_VERIFIED, ACTIVE
+SELECT STAFF_ID, EMPLOYEE_ID, ROLE, IDME_VERIFIED, ACTIVE
 FROM STAFF
 WHERE EMPLOYEE_ID = :employee_id
 ```
@@ -276,37 +283,37 @@ INACTIVE" vs "denied: NOT_VERIFIED") without an extra query.
 @dataclass
 class AccessDecision:
     granted: bool
-    reason: Literal["GRANTED", "NOT_FOUND", "NOT_VERIFIED", "INACTIVE", "LEVEL_ZERO"]
+    reason: Literal["GRANTED", "NOT_FOUND", "NOT_VERIFIED", "INACTIVE", "NON_STAFF"]
     staff: StaffRecord | None
 
 def decide_access(employee_id: str) -> AccessDecision: ...
 ```
 
-Decision tree, evaluated in order:
+Decision tree, evaluated in order (post-[ADR-015](../adr/ADR-015-role-model-simplification.md)):
 
 1. `staff` is `None` → `NOT_FOUND`
 2. `staff.IDME_VERIFIED != 'Y'` → `NOT_VERIFIED`
 3. `staff.ACTIVE != 'Y'` → `INACTIVE`
-4. `staff.PROCUREMENT_LEVEL == 0` → `LEVEL_ZERO`
+4. `staff.ROLE == 'NON_STAFF'` → `NON_STAFF`
 5. otherwise → `GRANTED`
 
 The router maps `NOT_FOUND` / `NOT_VERIFIED` / `INACTIVE` → 403 with the
 "not registered" copy (FR-03 doesn't distinguish — keep it that way to avoid leaking
-account-existence). `LEVEL_ZERO` → 403 with the Access Denied copy (FR-04).
+account-existence). `NON_STAFF` → 403 with the Access Denied copy (FR-04).
 
 ### 6.7 RBAC filter — `backend/app/services/rbac_service.py` 🟡 Yellow
 
-Single source of truth for "what columns does a role/level see":
+Single source of truth for "what columns does each role see". After
+[ADR-015](../adr/ADR-015-role-model-simplification.md) this collapses
+to two granted roles plus a denial-already-caught case:
 
 ```python
-def list_query_params(role: str, level: int) -> ListQueryParams:
-    if role == "ADMIN":
+def list_query_params(role: str) -> ListQueryParams:
+    if role == "PROCUREMENT_SUPERVISOR":
         return ListQueryParams(only_approved=False, include_contact=True, include_status=True)
-    if role == "STAFF" and level == 2:
+    if role == "REGULAR_STAFF":
         return ListQueryParams(only_approved=True, include_contact=True, include_status=False)
-    if role == "STAFF" and level == 1:
-        return ListQueryParams(only_approved=True, include_contact=False, include_status=False)
-    raise PermissionError  # LEVEL 0 never reaches here — caught in access_service
+    raise PermissionError  # NON_STAFF never reaches here — caught in access_service
 ```
 
 `oracle_service.list_vendors` honours these flags by selecting columns conditionally
@@ -339,8 +346,9 @@ class CallbackRequest(BaseModel):
     state: str
 
 class SessionResponse(BaseModel):
-    role: Literal["ADMIN", "STAFF"]
-    procurement_level: int = Field(ge=1, le=3)
+    # Per ADR-015: role is the single authority field; procurement_level removed.
+    role: Literal["PROCUREMENT_SUPERVISOR", "REGULAR_STAFF"]
+    staff_id: int
 
 class AuthorizeUrlResponse(BaseModel):
     authorize_url: HttpUrl
@@ -370,7 +378,13 @@ class VendorDetail(VendorListItemAdmin):
 
 `GET /api/vendors` declares its response as
 `list[VendorListItemL1 | VendorListItemL2 | VendorListItemAdmin]` — the actual variant
-returned depends on the caller's level. OpenAPI will model this as a `oneOf`.
+returned depends on the caller's role. After [ADR-015](../adr/ADR-015-role-model-simplification.md)
+only `staff_l1` / `staff_l2` / `admin` variants survive; the L1↔L2 split
+is preserved in the schema layer for backward compatibility with the
+existing FE but **today every authenticated session receives the
+`admin` variant** until per-role narrowing is wired up (follow-up to
+ADR-015). OpenAPI models the union as a `oneOf` discriminated by
+`variant`.
 
 Empty list (no vendors / no APPROVED vendors for staff) is `[]`, status 200. The
 frontend interprets emptiness; the backend never returns 204 for "no rows".
@@ -385,7 +399,7 @@ frontend interprets emptiness; the backend never returns 204 for "no rows".
 /                              <Login />
 /verification/callback         <VerificationCallback />
 /vendors                       <ProtectedRoute><VendorList /></ProtectedRoute>
-/vendors/:id                   <ProtectedRoute role="ADMIN"><VendorDetail /></ProtectedRoute>
+/vendors/:id                   <ProtectedRoute role="PROCUREMENT_SUPERVISOR"><VendorDetail /></ProtectedRoute>
 /access-denied                 <AccessDenied />
 *                              <NotFound />
 ```
@@ -397,15 +411,15 @@ frontend interprets emptiness; the backend never returns 204 for "no rows".
 
 On every SPA mount, the root component calls `GET /api/auth/me`:
 
-- 200 → hydrate auth store with `{ role, procurement_level, staff_id }`, render
-  protected routes as available.
+- 200 → hydrate auth store with `{ role, staff_id }`, render protected
+  routes as available.
 - 401 → set store to unauthenticated; if the current path is protected, redirect to
   `/`; preserve `?reason=session_expired` if the user was actively using the app
   (detected by checking that this 401 came mid-session, not on first paint).
 
 `<VerificationCallback />` reads `code` and `state` from the URL, POSTs them to
 `/api/auth/callback`, and on success navigates to `/vendors` (or `/access-denied`
-on 403 with `reason: LEVEL_ZERO`).
+on 403 with `reason: NON_STAFF` per ADR-015).
 
 ### 7.3 Pages / Screen Inventory — `frontend/src/pages/` 🟡 Yellow
 
@@ -416,14 +430,13 @@ stay in sync. **`Registration.jsx` is explicitly NOT in this inventory** per
 pre-loaded by `scripts/seed_oracle.py` and the portal never inserts into
 `STAFF`.
 
-| File | Route | Role / level | Purpose | Notable behaviour |
+| File | Route | Role | Purpose | Notable behaviour |
 |---|---|---|---|---|
 | `Login.jsx` | `/` | Anonymous | Public landing | "Verify with ID.me" CTA POSTs to `/api/auth/login`, then `window.location = response.authorize_url`. Shows banner if `?reason=session_expired`. |
 | `VerificationCallback.jsx` | `/verification/callback` | Anonymous | OAuth return | Posts code+state; shows "Verifying your identity…" with a max-3 s skeleton. On 403 routes to `/access-denied` (with sub-reason) or `/` with error toast. **No infinite spinner — bounded by a 10 s frontend timeout, then user-friendly retry.** |
-| `StaffView.jsx` | `/vendors` (STAFF) | LEVEL 1 / 2 | Approved-vendor list | Renders `<VendorTable variant="staff-L1" \| "staff-L2" />`, `<SearchBar />`, `<EmptyState />`. |
-| `AdminView.jsx` | `/vendors` (ADMIN) | LEVEL 3 | All-status vendor list | Renders `<VendorTable variant="admin" />` with status column + status dropdown filter. |
-| `VendorDetail.jsx` | `/vendors/:id` | LEVEL 3 only | Full vendor detail | Renders Item / Service card, Contact card (name + email), Metadata sidebar (vendor ID, status, approval date, created, last update). "Approved on: \<date>" line when status is APPROVED. "Back to list" link. *(`BankDetailsCard` was removed by ADR-012.)* |
-| `AccessDenied.jsx` | `/access-denied` | LEVEL 0 | Friendly denial | Clean, non-alarming message + contact instruction. Single "Back to FCPS" link to log out. |
+| `VendorList.jsx` | `/vendors` | REGULAR_STAFF + PROCUREMENT_SUPERVISOR | Vendor list | Renders `<VendorTable />` (variant per response discriminator), `<SearchBar />`, `<EmptyState />`. Today every authenticated session sees the admin variant; per-role narrowing is the follow-up to [ADR-015](../adr/ADR-015-role-model-simplification.md). |
+| `VendorDetail.jsx` | `/vendors/:id` | PROCUREMENT_SUPERVISOR only | Full vendor detail | Renders Item / Service card, Contact card (name + email), Metadata sidebar (vendor ID, status, approval date, created, last update). "Approved on: \<date>" line when status is APPROVED. "Back to list" link. *(`BankDetailsCard` was removed by ADR-012.)* |
+| `AccessDenied.jsx` | `/access-denied` | NON_STAFF and NOT_REGISTERED | Friendly denial | Clean, non-alarming message + contact instruction. Single "Back to Staff Procurement Portal" link to log out. Two copy variants driven by `X-Auth-Reason` (`NON_STAFF` vs `NOT_REGISTERED`). |
 
 ### 7.4 Components — `frontend/src/components/` 🟢 Green
 
@@ -445,7 +458,7 @@ pre-loaded by `scripts/seed_oracle.py` and the portal never inserts into
 
 Zustand store with two slices:
 
-- `auth`: `{ status: "loading" | "authenticated" | "unauthenticated", role, procurement_level, staff_id }`
+- `auth`: `{ status: "loading" | "authenticated" | "unauthenticated", role, staff_id }`
 - `vendors`: `{ items: VendorListItem[], filter: { name: string, status: Status | "ALL" }, fetchedAt }`
 
 Selectors that combine the two (e.g. "what columns to render") live in
@@ -479,7 +492,7 @@ staff and `"No vendors in the system yet."` for admin.
 - Status badges combine an ARIA-readable text label with colour (FR-18). Colour values
   chosen with ≥ 4.5:1 contrast against badge background.
 - Form-style fields (search box) have associated `<label>` elements.
-- Page titles set dynamically: "Login | FCPS Procurement", "Vendors | FCPS Procurement",
+- Page titles set dynamically: "Login | Staff Procurement", "Vendors | Staff Procurement",
   etc., for screen-reader navigation.
 - Login page CTA is a `<button>` (or `<a>` if it's a direct redirect target) — never
   a `<div>` with `onClick`.
@@ -509,28 +522,28 @@ Browser     SPA(React)     FastAPI                Oracle       ID.me
    │            │              │◄── id_token ─────────────────────│
    │            │              │── decode + validate id_token       │
    │            │              │── SELECT STAFF WHERE EMPLOYEE_ID=:sub ──►│  │
-   │            │              │◄── row(ACTIVE='Y', VERIFIED='Y', LEVEL=2, ROLE=STAFF) ◄┤  │
+   │            │              │◄── row(ACTIVE='Y', VERIFIED='Y', ROLE='REGULAR_STAFF') ◄┤  │
    │            │              │── access_service.decide_access → GRANTED               │
    │            │              │── jwt.sign + Set-Cookie session=…                       │
-   │            │◄── 200 { role:"STAFF", procurement_level:2 } ◄────                     │
+   │            │◄── 200 { role:"REGULAR_STAFF", staff_id:6 } ◄────                      │
    │            │── navigate("/vendors") ────                                            │
    │            │── GET /api/vendors  (cookie sent) ──►│                                 │
    │            │              │── require_authenticated → claims OK                    │
-   │            │              │── rbac_service.list_query_params(STAFF,2)              │
+   │            │              │── rbac_service.list_query_params("REGULAR_STAFF")      │
    │            │              │── SELECT … WHERE STATUS='APPROVED' ──►│                │
    │            │              │◄── rows ◄─────────────────────────────│                │
    │            │◄── 200 [VendorListItemL2,…] ◄────                                     │
-   │◄── render StaffView ─────────│                                                      │
+   │◄── render VendorList ───────│                                                      │
 ```
 
-### 8.2 Admin opens vendor detail
+### 8.2 Procurement Supervisor opens vendor detail
 
 ```
-Browser     SPA      FastAPI                       Oracle
-   │         │          │                              │
-   │── click row ─►     │                              │
-   │         │── GET /api/vendors/123 ─►│              │
-   │         │          │── require_role("ADMIN")      │
+Browser     SPA      FastAPI                                          Oracle
+   │         │          │                                                 │
+   │── click row ─►     │                                                 │
+   │         │── GET /api/vendors/123 ─►│                                 │
+   │         │          │── require_role("PROCUREMENT_SUPERVISOR")        │
    │         │          │── SELECT [non-bank columns] FROM PROCUREMENT_ITEMS WHERE ITEM_ID=123 ─►│
    │         │          │◄── row (BANK_DETAILS not selected) ◄─│
    │         │◄── 200 VendorDetail ◄────│
@@ -540,13 +553,13 @@ Browser     SPA      FastAPI                       Oracle
 > *Previously this flow wrote an `AUDIT_LOG` row before responding. Removed
 > by [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md).*
 
-### 8.3 LEVEL 0 denial
+### 8.3 NON_STAFF denial
 
 ```
 … ID.me OK, code exchange OK, JWT NOT issued …
-FastAPI: access_service → LEVEL_ZERO
-FastAPI: 403 { detail: "Access denied. Your account does not have procurement clearance." }
-SPA:    catches 403 on /api/auth/callback with reason=LEVEL_ZERO → navigate("/access-denied")
+FastAPI: access_service → NON_STAFF
+FastAPI: 403 { detail: "Access denied. Your account does not have portal access." }
+SPA:    catches 403 on /api/auth/callback with reason=NON_STAFF → navigate("/access-denied")
 ```
 
 ### 8.4 Session expiry mid-use
@@ -594,9 +607,9 @@ Backend error envelope (FastAPI default `{detail: string}` kept):
 |---|---|---|---|
 | 400 | OAuth `state` invalid/expired | "Authentication request expired. Please verify again." | Toast on `/` + remove `?reason=session_expired` |
 | 401 | Missing/invalid/expired JWT | "Session invalid or expired." | Redirect to `/?reason=session_expired` |
-| 403 (`role`) | Non-admin hits admin endpoint | "You do not have permission to view this resource." | Toast + back to `/vendors` |
-| 403 (`LEVEL_ZERO`) | Access decision LEVEL 0 | "Access denied. Your account does not have procurement clearance." | `/access-denied` page |
-| 403 (`NOT_REGISTERED`) | NOT_FOUND, NOT_VERIFIED, INACTIVE | "Your identity has been verified but you are not registered in the FCPS procurement system. Contact your procurement coordinator." | `/access-denied` page (same UX; no enumeration leak) |
+| 403 (`ROLE_FORBIDDEN`) | Non-supervisor hits supervisor endpoint | "You do not have permission to view this resource." | Toast + back to `/vendors` |
+| 403 (`NON_STAFF`) | Access decision — STAFF row has `ROLE = 'NON_STAFF'` | "Access denied. Your account does not have portal access." | `/access-denied` page |
+| 403 (`NOT_REGISTERED`) | NOT_FOUND, NOT_VERIFIED, INACTIVE | "Your identity could not be verified and you do not have access to the portal." | `/access-denied` page (same UX; no enumeration leak) |
 | 404 | `/api/vendors/{id}` no row | "Vendor not found." | `<NotFound />` mini-state on detail page |
 | 500 | Oracle error (query failure, connection error) | "Something went wrong. Please try again." | Toast; **stack trace never leaks**. *(The `500 on audit failure` clause was removed by ADR-012.)* |
 | 502 | ID.me unreachable / token call failed | "Identity provider unreachable." | Toast on login page; retry button. |
@@ -664,7 +677,7 @@ With ~120 rows this is fine and avoids cache-coherency bugs.
 | Layer | Tool | Focus |
 |---|---|---|
 | Backend unit | Pytest | `access_service` decision tree (all 5 reasons); `rbac_service` column flags per role/level; `jwt` sign/verify. |
-| Backend integration | Pytest + httpx + testcontainers Oracle | `/api/vendors` for L1, L2, ADMIN returns the right shape; `/api/vendors/{id}` returns 200 for admin, 403 for STAFF, 404 for unknown ID. |
+| Backend integration | Pytest + httpx + testcontainers Oracle | `/api/vendors` returns the right shape per role (today every authenticated session sees the admin variant; per-role narrowing follows ADR-015); `/api/vendors/{id}` returns 200 for PROCUREMENT_SUPERVISOR, 403 for REGULAR_STAFF, 404 for unknown ID. |
 | ID.me callback | Mocked at the `requests.post` boundary. Test happy path, expired state, invalid id_token, ID.me 5xx → 502. |
 | Frontend unit | Jest + RTL | `StatusBadge` colour + text; `EmptyState` props; `apiFetch` 401 → redirect side-effect. |
 | Frontend integration | RTL + MSW | StaffView L1 vs L2 column rendering; AdminView status filter; VerificationCallback success and 403→/access-denied. |
@@ -697,7 +710,7 @@ Unchanged from `ARCHITECTURE.md` §5. Notable specifics:
 |---|---|---|---|
 | OQ-FD-01 | When HTTPS is enabled, cookie `Secure=true`. Today's demo is HTTP; do we make the cookie env-driven `JWT_COOKIE_SECURE` so HTTPS rollout is a config flip? | Yes — env-driven, default `false`. | C&T Tech Lead |
 | OQ-FD-02 | `state` cache backing store. In-process dict is fine for one Uvicorn worker. If we ever scale to multiple workers, we need a shared store (Redis) — not in demo scope. | In-process dict, single worker. Document the constraint. | C&T Tech Lead |
-| OQ-FD-03 | D-FD-13: Show the user's first name in the header? Requires `GET /api/auth/me` to return name, which means PII leaves the backend. The wins are minor (friendliness). | **Do not** show name; header reads "Signed in (ADMIN)" / "Signed in". | C&T Project Lead |
+| OQ-FD-03 | D-FD-13: Show the user's first name in the header? Requires `GET /api/auth/me` to return name, which means PII leaves the backend. The wins are minor (friendliness). | **Do not** show name; header reads "Signed in (Procurement Supervisor)" / "Signed in (Regular Staff)". | C&T Project Lead |
 | ~~OQ-FD-04~~ | ~~Audit-write failure handling.~~ **Removed by [ADR-012](../adr/ADR-012-bank-details-out-of-scope.md) — no audit service to fail.** | — |
 | OQ-FD-05 | OpenAPI `oneOf` for `/api/vendors` response. Easy in spec, mildly awkward in clients. Alternative: a single union schema with optional fields. | `oneOf` — preserves the "structurally impossible to over-disclose" guarantee from §6.9. | C&T Tech Lead |
 | OQ-FD-06 | Should `/api/auth/me` 401 trigger `?reason=session_expired` on **every** unauthenticated mount, or only when there was a prior session? Frontend has no durable hint either way. | Only on mid-session 401 (detected by SPA flag in session storage). On fresh page load, no banner. | C&T Tech Lead |

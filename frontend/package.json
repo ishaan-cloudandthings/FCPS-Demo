@@ -1,9 +1,9 @@
 {
-  "name": "fcps-procurement-portal-frontend",
+  "name": "staff-procurement-portal-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "FCPS Vendor Procurement Portal — React SPA. See docs/design/ for screen rationale and docs/requirements/FUNCTIONAL_DESIGN.md §7 for component contracts.",
+  "description": "Staff Procurement Portal — React SPA. See docs/design/ for screen rationale and docs/requirements/FUNCTIONAL_DESIGN.md §7 for component contracts.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -72,7 +72,7 @@ def rsa_keypair() -> dict[str, Any]:
 def _sign_token(
     rsa_keypair: dict[str, Any],
     *,
-    sub: str = "FCPS-001",
+    sub: str = "EMP-001",
     iss: str = "https://api.id.me",
     aud: str = "test-client-id",
     exp_offset: int = 300,
@@ -121,15 +121,14 @@ def mock_access_decision():
 
         mock_access_decision.set(AccessDecision(granted=True, ...))
         ... call endpoint ...
-        assert mock_access_decision.received_sub == "FCPS-001"
+        assert mock_access_decision.received_sub == "EMP-001"
     """
     class Holder:
         decision = AccessDecision(
             granted=True,
             reason="GRANTED",
             staff_id=42,
-            role="STAFF",
-            procurement_level=2,
+            role="REGULAR_STAFF",
         )
         received_sub: str | None = None
         # AC13-D6: tests can set `raises` to simulate an infrastructure
@@ -157,12 +156,11 @@ def mock_session_issuer():
     class Holder:
         calls: list[dict[str, Any]] = []
 
-        def __call__(self, response, *, staff_id, role, procurement_level) -> None:
+        def __call__(self, response, *, staff_id, role) -> None:
             self.calls.append(
                 {
                     "staff_id": staff_id,
                     "role": role,
-                    "procurement_level": procurement_level,
                 }
             )
             # Set a marker cookie so callers can verify the issuer was invoked.
@@ -242,13 +240,13 @@ def test_callback_happy_path_returns_200(
 
     assert response.status_code == 200
     body = response.json()
-    # AC9-D4: callback response now also includes staff_id.
-    assert body == {"role": "STAFF", "procurement_level": 2, "staff_id": 42}
+    # ADR-015: response is {role, staff_id} (procurement_level dropped).
+    assert body == {"role": "REGULAR_STAFF", "staff_id": 42}
     # AC7-D11: access_service receives `sub`, not `staff_id`.
-    assert mock_access_decision.received_sub == "FCPS-001"
+    assert mock_access_decision.received_sub == "EMP-001"
     # AC-8 stub was invoked with the GRANTED fields.
     assert mock_session_issuer.calls == [
-        {"staff_id": 42, "role": "STAFF", "procurement_level": 2}
+        {"staff_id": 42, "role": "REGULAR_STAFF"}
     ]
     # Session cookie set by the mock issuer.
     assert response.cookies.get("session") == "test-jwt"
@@ -417,12 +415,12 @@ def test_callback_missing_id_token_returns_401(callback_client, good_state):
 # -----------------------------------------------------------------------------
 
 @respx.mock
-def test_callback_level_zero_returns_403_with_header(
+def test_callback_non_staff_returns_403_with_header(
     callback_client, good_state, rsa_keypair, mock_access_decision
 ):
-    """LEVEL_ZERO → 403 + X-Auth-Reason: LEVEL_ZERO + the LEVEL_ZERO copy."""
+    """ADR-015: NON_STAFF → 403 + X-Auth-Reason: NON_STAFF + the NON_STAFF copy."""
     mock_access_decision.set(
-        AccessDecision(granted=False, reason="LEVEL_ZERO")
+        AccessDecision(granted=False, reason="NON_STAFF")
     )
     _mock_idme_token(respx, _sign_token(rsa_keypair))
     _mock_idme_jwks(respx, rsa_keypair["public_jwk"])
@@ -432,9 +430,9 @@ def test_callback_level_zero_returns_403_with_header(
         json={"code": "c", "state": good_state},
     )
     assert response.status_code == 403
-    assert response.headers["X-Auth-Reason"] == "LEVEL_ZERO"
+    assert response.headers["X-Auth-Reason"] == "NON_STAFF"
     assert response.json()["detail"] == (
-        "Access denied. Your account does not have procurement clearance."
+        "Access denied. Your account does not have portal access."
     )
 
 
@@ -454,7 +452,7 @@ def test_callback_unregistered_collapses_to_not_registered(
     )
     assert response.status_code == 403
     assert response.headers["X-Auth-Reason"] == "NOT_REGISTERED"
-    assert "not registered in the FCPS procurement system" in response.json()["detail"]
+    assert "identity could not be verified" in response.json()["detail"]
 
 
 # -----------------------------------------------------------------------------
@@ -510,7 +508,7 @@ def test_callback_never_logs_sensitive_values(
 ):
     """code, state, id_token, sub must never appear in any log record."""
     sensitive_code = "very-secret-auth-code"
-    sub = "FCPS-LEAK-CHECK"
+    sub = "Staff Procurement Portal-LEAK-CHECK"
     token = _sign_token(rsa_keypair, sub=sub)
     _mock_idme_token(respx, token)
     _mock_idme_jwks(respx, rsa_keypair["public_jwk"])

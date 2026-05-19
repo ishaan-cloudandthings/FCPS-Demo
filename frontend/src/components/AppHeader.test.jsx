@@ -12,8 +12,7 @@ import { useAuthStore } from "../store/auth.js";
 function renderHeader() {
   useAuthStore.setState({
     status: "authenticated",
-    role: "ADMIN",
-    procurement_level: 3,
+    role: "PROCUREMENT_SUPERVISOR",
     staff_id: 42,
   });
   return render(
@@ -30,11 +29,10 @@ describe("AppHeader", () => {
   it("renders the brand wordmark and user pill", () => {
     renderHeader();
     expect(
-      screen.getByText(/FCPS Vendor Procurement Portal/i),
+      screen.getByText(/Staff Procurement Portal/i),
     ).toBeInTheDocument();
     const pill = screen.getByTestId("user-pill");
-    expect(pill).toHaveTextContent(/admin/i);
-    expect(pill).toHaveTextContent(/L3/);
+    expect(pill).toHaveTextContent(/procurement supervisor/i);
     expect(pill).toHaveTextContent(/#42/);
   });
 

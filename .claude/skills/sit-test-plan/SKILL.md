@@ -1,9 +1,9 @@
 ---
 name: sit-test-plan
-description: Produce a System Integration Test plan and pytest scripts that exercise a full sprint's stories against the FCPS Docker Compose stack, including all integration points (ID.me sandbox, Oracle XE, JWT). Used by the QC agent at the end of each sprint.
+description: Produce a System Integration Test plan and pytest scripts that exercise a full sprint's stories against the Staff Procurement Portal Docker Compose stack, including all integration points (ID.me sandbox, Oracle XE, JWT). Used by the QC agent at the end of each sprint.
 ---
 
-# Skill: SIT Test Plan — FCPS Procurement Portal
+# Skill: SIT Test Plan — Staff Procurement Portal
 
 ## When to use this
 
@@ -36,7 +36,7 @@ curl -s http://localhost:8000/docs | head -5
 <one sentence>
 
 ## Scope
-Stories: FCPS-...
+Stories: Staff Procurement Portal-...
 
 ## Environment
 - URL: http://localhost:80 (dev) or https://<ec2-ip> (staging)
@@ -68,7 +68,7 @@ Stories: FCPS-...
 ## Test scenario template
 
 ```markdown
-### FCPS-<N> — <Story title>
+### Staff Procurement Portal-<N> — <Story title>
 
 **Pre-conditions:**
 - Oracle seeded: <which seed record(s)>
@@ -97,11 +97,11 @@ Stories: FCPS-...
 **Data file:** `tests/sit/sprint_N/data/<story-slug>.json`
 ```
 
-## FCPS-specific test scenarios to always include
+## Staff Procurement Portal-specific test scenarios to always include
 
 | Scenario | What it proves |
 |---|---|
-| FCPS-010 (Evans, LEVEL=0) attempts access | Access denied correctly |
+| EMP-010 (Evans, LEVEL=0) attempts access | Access denied correctly |
 | Unverified staff (IDME_VERIFIED='N') attempts access | Access denied correctly |
 | INACTIVE staff (ACTIVE='N') attempts access | Access denied correctly |
 | Staff (LEVEL=1) requests procurement list | Only APPROVED items returned; no CONTACT/BANK fields |

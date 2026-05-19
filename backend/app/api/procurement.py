@@ -17,8 +17,8 @@ single point of change in this file will be:
 
 * import `rbac_service`
 * replace the hardcoded `_params_for_admin()` call with
-  `rbac_service.params_for(claims.role, claims.procurement_level)`
-* optionally add `Depends(require_role("ADMIN"))` to the detail handler
+  `rbac_service.params_for(claims.role)` (post-ADR-015)
+* optionally add `Depends(require_role("PROCUREMENT_SUPERVISOR"))` to the detail handler
 
 See `# TODO(AC-17)` markers below.
 
@@ -63,7 +63,7 @@ def _params_for_admin() -> dict:
     """Hardcoded "everyone sees everything" params (AC-18 today).
 
     TODO(AC-17): replace this with
-    `rbac_service.params_for(claims.role, claims.procurement_level)`.
+    `rbac_service.params_for(claims.role)` (post-ADR-015).
     Until then, every authenticated caller gets the full admin shape.
     """
     return dict(
@@ -122,7 +122,7 @@ def list_vendors_endpoint(
     In dev: if Oracle is unreachable (connection is None, or
     OracleUnavailable raised during query), serve in-memory demo data.
     """
-    # TODO(AC-17): swap to `rbac_service.params_for(claims.role, claims.procurement_level)`.
+    # TODO(AC-17): swap to `rbac_service.params_for(claims.role)` (post-ADR-015).
     params = _params_for_admin()
 
     if connection is None:
@@ -165,7 +165,7 @@ def get_vendor_endpoint(
     settings: Settings = Depends(get_settings),
 ) -> VendorDetail:
     """Vendor detail. AC-18 allows every authenticated caller. AC-17 will
-    additionally require ADMIN via `Depends(require_role("ADMIN"))`.
+    additionally require PROCUREMENT_SUPERVISOR via `Depends(require_role("PROCUREMENT_SUPERVISOR"))`.
 
     Dev fallback: if Oracle is unreachable, look up in the in-memory
     demo set.

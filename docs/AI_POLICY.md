@@ -1,6 +1,6 @@
 # AI_POLICY.md — Rules of Engagement for AI Tool Usage
 
-This document defines the rules of engagement for AI tool usage on the FCPS Procurement
+This document defines the rules of engagement for AI tool usage on the Staff Procurement
 Portal. Governance conversations reference this document — not anyone's opinion. Any deviation
 from these rules requires explicit sign-off from the project lead and a documented ADR.
 
@@ -84,9 +84,9 @@ regardless of code quality or test results.
 
 The following must never appear in AI prompts, chat history, or AI tool inputs:
 
-- Real FCPS staff data, PII, or personally identifiable information of any kind
+- Real staff data, PII, or personally identifiable information of any kind
 - Production credentials, API keys, JWT secrets, ID.me secrets, or Oracle passwords
-- Any data classified as confidential under FCPS or C&T data classification policy
+- Any data classified as confidential under Staff Procurement Portal or C&T data classification policy
 
 When in doubt, anonymise or replace with dummy values before using in a prompt.
 

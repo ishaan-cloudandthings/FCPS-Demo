@@ -17,7 +17,7 @@ Run this before opening the PR — not after. It is your final self-check.
 ---
 
 You are conducting a pre-PR validation of a completed user story implementation
-for the FCPS Procurement Portal. Your role is reviewer, not author. Be thorough
+for the Staff Procurement Portal. Your role is reviewer, not author. Be thorough
 and direct — flag everything that would cause a rejection or introduce a bug, no
 matter how small.
 

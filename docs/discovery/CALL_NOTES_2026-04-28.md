@@ -1,4 +1,4 @@
-# Requirements Call Notes — FCPS Procurement Portal
+# Requirements Call Notes — Staff Procurement Portal
 
 > BA agent prompt after this call:
 > "Read all files in `docs/discovery/` in date order. Build a picture of what has been
@@ -13,7 +13,7 @@
 |---|---|
 | Date | 2026-04-28 |
 | Type | Initial Discovery |
-| Attendees | FCPS Procurement Coordinator, C&T Project Lead |
+| Attendees | Procurement Coordinator, C&T Project Lead |
 | Facilitator | C&T Project Lead |
 | Duration | 45 minutes |
 
@@ -21,8 +21,8 @@
 
 ## Context
 
-First call with FCPS. No technical details discussed — purely understanding the
-business problem and what a successful outcome looks like. FCPS IT Lead was
+First call with Staff Procurement Portal. No technical details discussed — purely understanding the
+business problem and what a successful outcome looks like. IT Lead was
 not available and will join the technical call next week.
 
 ---
@@ -47,7 +47,7 @@ audit trail for who changed what or when.
 - No self-service — every query comes to Procurement Coordinator
 - No access control — anyone Procurement Coordinator shares the file with sees everything, including
   bank details
-- No verification that the person asking is actually an FCPS employee
+- No verification that the person asking is actually an employee
 - No audit log on who accessed sensitive vendor financial information
 
 **What success looks like:**
@@ -72,9 +72,9 @@ The portal needs to show each type of user the right slice of data — automatic
 based on who they are.
 
 **Identity:**
-Procurement Coordinator mentioned that FCPS already uses ID.me for some HR processes. She wants
+Procurement Coordinator mentioned that Staff Procurement Portal already uses ID.me for some HR processes. She wants
 staff to verify through ID.me before they can access any data. "If they're not
-a real FCPS employee, they shouldn't see anything."
+a real employee, they shouldn't see anything."
 
 ---
 
@@ -107,28 +107,28 @@ a real FCPS employee, they shouldn't see anything."
 
 | System | Purpose | Notes |
 |---|---|---|
-| ID.me | Staff identity verification | Procurement Coordinator confirmed FCPS already has an account. FCPS IT Lead will handle the technical setup. |
-| Oracle | Staff and vendor data | FCPS IT Lead manages the Oracle instance. Procurement Coordinator wasn't sure of the details — deferred to technical call. |
+| ID.me | Staff identity verification | Procurement Coordinator confirmed Staff Procurement Portal already has an account. IT Lead will handle the technical setup. |
+| Oracle | Staff and vendor data | IT Lead manages the Oracle instance. Procurement Coordinator wasn't sure of the details — deferred to technical call. |
 
 ---
 
 ## Decisions Made on This Call
 
 - **The portal is read-only for the demo.** No creating or editing vendors through the UI.
-- **ID.me is the identity provider.** Not negotiable — FCPS IT policy.
+- **ID.me is the identity provider.** Not negotiable — Staff Procurement Portal IT policy.
 - **Two distinct views are needed.** Admin (procurement coordinator) sees everything. Staff sees approved vendors only.
 - **Sensitive vendor financial data must be access-controlled.** Bank details are not for general staff.
-- **This is a demo build.** The goal is to show the concept to FCPS leadership — not a production system yet.
+- **This is a demo build.** The goal is to show the concept to Staff Procurement Portal leadership — not a production system yet.
 
 ---
 
 ## Open Questions
 
 - [ ] How many staff members will use this? Rough number for load planning — Owner: Procurement Coordinator — needed before NFR call
-- [ ] Are there more than two procurement levels, or is it just admin vs staff? — Owner: FCPS IT Lead — needed before technical call
-- [ ] What browser does FCPS IT standardise on? — Owner: FCPS IT Lead — needed before design starts
+- [ ] Are there more than two procurement levels, or is it just admin vs staff? — Owner: IT Lead — needed before technical call
+- [ ] What browser does Staff Procurement Portal IT standardise on? — Owner: IT Lead — needed before design starts
 - [ ] What does the committee approval process look like? (Out of scope for portal but useful context) — Owner: Procurement Coordinator — informal
-- [ ] Are there any FCPS data governance policies that apply to vendor financial data? — Owner: FCPS IT Lead — needed before build starts
+- [ ] Are there any data governance policies that apply to vendor financial data? — Owner: IT Lead — needed before build starts
 
 ---
 
@@ -140,7 +140,7 @@ a real FCPS employee, they shouldn't see anything."
 > "The problem isn't just the emails. It's that I have to share the whole spreadsheet
 > to answer one question, and that spreadsheet has bank account numbers in it." — Procurement Coordinator
 
-> "If they're a real FCPS employee with procurement clearance, they should be able to
+> "If they're a real employee with procurement clearance, they should be able to
 > see what they need. If they're not, they get nothing." — Procurement Coordinator
 
 ---
@@ -149,20 +149,20 @@ a real FCPS employee, they shouldn't see anything."
 
 | Action | Owner | By when |
 |---|---|---|
-| Schedule technical discovery call with FCPS IT Lead | C&T Project Lead | 2026-04-30 |
+| Schedule technical discovery call with IT Lead | C&T Project Lead | 2026-04-30 |
 | Procurement Coordinator to confirm approximate number of staff users | Procurement Coordinator | 2026-05-02 |
-| C&T to prepare technical questions list for FCPS IT Lead call | C&T Tech Lead | 2026-05-03 |
+| C&T to prepare technical questions list for IT Lead call | C&T Tech Lead | 2026-05-03 |
 
 ---
 
 ## Raw Notes
 
-- Procurement Coordinator has been at FCPS 8 years. Knows the vendor data inside out.
+- Procurement Coordinator has been at Staff Procurement Portal 8 years. Knows the vendor data inside out.
 - The Excel spreadsheet has ~120 vendors. Roughly 40 are APPROVED.
 - Committee meets monthly to review PENDING and UNDER_REVIEW vendors.
 - Procurement Coordinator (secondary) (second coordinator) does the same job as Procurement Coordinator — both need full access.
-- Demo audience: FCPS IT leadership and the two coordinators. Possibly the Deputy
-  Superintendent. Procurement Coordinator said "if it impresses FCPS IT Lead, it impresses everyone."
+- Demo audience: Staff Procurement Portal IT leadership and the two coordinators. Possibly the Deputy
+  Superintendent. Procurement Coordinator said "if it impresses IT Lead, it impresses everyone."
 - Procurement Coordinator explicitly does NOT want anything "fancy" — "we don't need animations or
   dashboards. We need a list that works."
 - C&T confirmed this is a greenfield demo build — not migrating from an existing system.

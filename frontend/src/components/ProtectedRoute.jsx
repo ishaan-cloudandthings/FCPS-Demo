@@ -9,7 +9,7 @@
  *   - "authenticated"    → render children.
  *
  * The `level` prop is reserved for AC-17 (real RBAC). It has no effect
- * today. TODO(AC-17): consult `level` and `claims.procurement_level`.
+ * today. TODO(AC-17): consult `role` and `claims.role` (per ADR-015).
  */
 import { Navigate } from "react-router-dom";
 
@@ -24,6 +24,6 @@ export function ProtectedRoute({ children, level }) {  // eslint-disable-line no
   if (status === "unauthenticated") {
     return <Navigate to="/?reason=session_expired" replace />;
   }
-  // TODO(AC-17): if (level && claims.procurement_level < level) redirect to /access-denied.
+  // TODO(AC-17): if (level && !ROLES_AT_OR_ABOVE[level]?.includes(claims.role)) redirect to /access-denied.
   return children;
 }

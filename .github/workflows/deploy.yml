@@ -24,7 +24,7 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ~/fcps-procurement-portal
+            cd ~/spp-procurement-portal
 
             echo "Pulling latest code..."
             git fetch origin prod

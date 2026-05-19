@@ -36,14 +36,17 @@ class DevLoginRequest(BaseModel):
     Per [ADR-014](../../../../docs/adr/ADR-014-demo-persona-login-dev-only.md)
     + DEV8: `persona` is a closed Literal — unknown personas 422 at
     Pydantic. Adding a new persona is a code change, not data-driven.
+
+    Per [ADR-015](../../../../docs/adr/ADR-015-role-model-simplification.md),
+    the persona list collapsed from 5 to 4: three business roles + the
+    `not_registered` technical denial path.
     """
 
     model_config = ConfigDict(extra="forbid")
     persona: Literal[
-        "admin_l3",
-        "staff_l2",
-        "staff_l1",
-        "level_zero",
+        "procurement_supervisor",
+        "regular_staff",
+        "non_staff",
         "not_registered",
     ]
 
@@ -58,14 +61,12 @@ class DevLoginAvailableResponse(BaseModel):
 class SessionResponse(BaseModel):
     """Returned by POST /api/auth/callback and GET /api/auth/me.
 
-    Per FUNCTIONAL_DESIGN.md §6.1 + AC9-D4: the SPA hydrates its auth
-    store from this shape on every mount, so `staff_id` is part of the
-    contract. Single schema used by both endpoints — see AC-9 decision
-    log for the rationale on not splitting it into a separate
-    `MeResponse`.
+    Per [ADR-015](../../../../docs/adr/ADR-015-role-model-simplification.md),
+    `role` is the single authority field; `procurement_level` was
+    dropped. The SPA hydrates its auth store from this shape on every
+    mount (AC9-D4).
     """
 
     model_config = ConfigDict(extra="forbid")
-    role: Literal["ADMIN", "STAFF"]
-    procurement_level: int = Field(ge=1, le=3)
+    role: Literal["PROCUREMENT_SUPERVISOR", "REGULAR_STAFF"]
     staff_id: int

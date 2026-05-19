@@ -41,8 +41,8 @@ or it will refuse to start.
 
 | # | Decision | Ratified value |
 |---|---|---|
-| DEMO-1 | What gets a default | `idme_client_id`, `idme_client_secret`, `idme_issuer`, all `idme_*_url`, `jwt_secret_key`, `oracle_user`, `oracle_password`. URLs default to the real ID.me sandbox endpoints + `localhost:1521` for Oracle. Credentials default to obviously-synthetic sentinels (`fcps_demo_user`, `fcps_demo_password`, etc.). |
-| DEMO-2 | JWT demo secret | `_DEMO_JWT_SECRET` is a 64-char `str` that satisfies `min_length=32`. It is intentionally **not** the output of `secrets.token_urlsafe(48)` — its hardcoded content (`fcps-demo-only-jwt-secret-…`) is part of the audit trail. |
+| DEMO-1 | What gets a default | `idme_client_id`, `idme_client_secret`, `idme_issuer`, all `idme_*_url`, `jwt_secret_key`, `oracle_user`, `oracle_password`. URLs default to the real ID.me sandbox endpoints + `localhost:1521` for Oracle. Credentials default to obviously-synthetic sentinels (`spp_demo_user`, `spp_demo_password`, etc.). |
+| DEMO-2 | JWT demo secret | `_DEMO_JWT_SECRET` is a 64-char `str` that satisfies `min_length=32`. It is intentionally **not** the output of `secrets.token_urlsafe(48)` — its hardcoded content (`spp-demo-only-jwt-secret-…`) is part of the audit trail. |
 | DEMO-3 | Non-dev guard | `Settings._refuse_demo_defaults_outside_dev` raises `ValueError` at construction time when `ENVIRONMENT != "dev"` and any `_DEMO_*` sentinel is still in place. Boot fails loudly with the list of leaked fields. |
 | DEMO-4 | Operator visibility | `main.py` calls `Settings.is_using_demo_jwt_secret()` and logs a `DEMO_BOOT` WARNING when true. The warning makes any tail-log inspection obvious. |
 | DEMO-5 | `.env.example` posture | Reset to an empty template (no values, only documentation). The real demo secret lives in `config.py` `_DEMO_*` constants — not in the template file. |

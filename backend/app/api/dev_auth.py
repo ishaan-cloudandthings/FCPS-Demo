@@ -32,7 +32,7 @@ from typing import Callable
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.api.auth import (
-    _DETAIL_LEVEL_ZERO,
+    _DETAIL_NON_STAFF,
     _DETAIL_NOT_REGISTERED,
     get_session_issuer,
 )
@@ -50,19 +50,17 @@ logger = get_logger(__name__)
 # DEV3 — the persona table. Hardcoded by design; adding a persona is a
 # code change, not data-driven. Keys must match DevLoginRequest's Literal.
 #
-# staff_ids align with the AC-12 seed (DATA_MODEL.md §8) so that once
-# AC-13 wires the real /callback, introspecting a dev-session's staff_id
-# against Oracle resolves to a row with the same role/level. See
-# AC12-D9 in docs/decision-log/AC-12-seed-staff.md.
+# staff_ids align with the AC-12 seed (DATA_MODEL.md §8). Per
+# [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md) the
+# role model is now 3 business roles (no `procurement_level`).
 _GRANTED_PERSONAS: dict[str, dict[str, object]] = {
-    "admin_l3": {"staff_id": 1, "role": "ADMIN", "procurement_level": 3},  # FCPS-001 Sarah Mitchell
-    "staff_l2": {"staff_id": 6, "role": "STAFF", "procurement_level": 2},  # FCPS-006 David Hernandez
-    "staff_l1": {"staff_id": 3, "role": "STAFF", "procurement_level": 1},  # FCPS-003 Linda Nguyen
+    "procurement_supervisor": {"staff_id": 1, "role": "PROCUREMENT_SUPERVISOR"},  # EMP-001 Sarah Mitchell
+    "regular_staff":          {"staff_id": 6, "role": "REGULAR_STAFF"},           # EMP-006 David Hernandez
 }
 
 _DENIED_PERSONAS: dict[str, tuple[str, str]] = {
     # persona → (X-Auth-Reason header value, response body detail)
-    "level_zero": ("LEVEL_ZERO", _DETAIL_LEVEL_ZERO),
+    "non_staff":      ("NON_STAFF",      _DETAIL_NON_STAFF),
     "not_registered": ("NOT_REGISTERED", _DETAIL_NOT_REGISTERED),
 }
 
@@ -88,9 +86,9 @@ def dev_login(
 ) -> SessionResponse:
     """Mint a session for the requested persona.
 
-    DEV3 — five hardcoded personas:
-      admin_l3 / staff_l2 / staff_l1 → 200 + session cookie
-      level_zero / not_registered    → 403 + X-Auth-Reason header
+    DEV3 — four hardcoded personas (per ADR-015):
+      procurement_supervisor / regular_staff → 200 + session cookie
+      non_staff / not_registered             → 403 + X-Auth-Reason header
     """
     _require_dev(settings)
 
@@ -115,7 +113,6 @@ def dev_login(
         response,
         staff_id=claims["staff_id"],
         role=claims["role"],
-        procurement_level=claims["procurement_level"],
     )
     logger.info(
         "dev_auth.login persona=%s outcome=granted DEV_AUTH_USED",
@@ -123,7 +120,6 @@ def dev_login(
     )
     return SessionResponse(
         role=claims["role"],            # type: ignore[arg-type]
-        procurement_level=claims["procurement_level"],   # type: ignore[arg-type]
         staff_id=claims["staff_id"],    # type: ignore[arg-type]
     )
 

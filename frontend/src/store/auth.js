@@ -3,7 +3,11 @@
  *
  * Shape:
  *   status: "loading" | "authenticated" | "unauthenticated"
- *   role, procurement_level, staff_id — populated only when authenticated
+ *   role, staff_id — populated only when authenticated
+ *
+ * Per [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md),
+ * `procurement_level` was dropped; `role` is the single authority field
+ * (`PROCUREMENT_SUPERVISOR` or `REGULAR_STAFF`).
  *
  * The store is the SPA's single source of truth for "who is the current
  * user?" The hydration call lives in `useAuthBootstrap`, which calls
@@ -14,7 +18,6 @@ import { create } from "zustand";
 const initialState = {
   status: "loading",
   role: null,
-  procurement_level: null,
   staff_id: null,
 };
 
@@ -24,14 +27,12 @@ export const useAuthStore = create((set) => ({
     set({
       status: "authenticated",
       role: claims.role,
-      procurement_level: claims.procurement_level,
       staff_id: claims.staff_id,
     }),
   setUnauthenticated: () =>
     set({
       status: "unauthenticated",
       role: null,
-      procurement_level: null,
       staff_id: null,
     }),
   reset: () => set(initialState),

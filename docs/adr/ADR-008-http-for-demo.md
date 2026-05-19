@@ -4,7 +4,7 @@
 |---|---|
 | Status | Accepted |
 | Date | 2026-05-14 |
-| Author | C&T BA (Claude), on behalf of FCPS IT Lead |
+| Author | C&T BA (Claude), on behalf of IT Lead |
 | Supersedes | — |
 | Superseded by | — |
 
@@ -55,7 +55,7 @@ demo. This ADR resolves that conflict.
   - No production data or credentials (ADR-007)
   - Demo is short-lived (single audience showcase)
 - Some browsers may show a "Not secure" warning that distracts demo viewers.
-  Accepted; FCPS IT Lead is aware.
+  Accepted; IT Lead is aware.
 
 **Follow-ups required**
 

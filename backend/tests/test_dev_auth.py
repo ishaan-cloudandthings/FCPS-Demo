@@ -30,9 +30,9 @@ def mock_session_issuer():
     class Holder:
         calls: list[dict[str, Any]] = []
 
-        def __call__(self, response, *, staff_id, role, procurement_level) -> None:
+        def __call__(self, response, *, staff_id, role) -> None:
             self.calls.append(
-                {"staff_id": staff_id, "role": role, "procurement_level": procurement_level}
+                {"staff_id": staff_id, "role": role}
             )
             response.set_cookie(key="session", value="test-jwt", httponly=True)
 
@@ -78,10 +78,10 @@ def _prod_settings_override():
 @pytest.mark.parametrize(
     "persona,expected_claims",
     [
-        # staff_ids align with AC-12 seed (DATA_MODEL.md §8) — AC12-D9.
-        ("admin_l3", {"staff_id": 1, "role": "ADMIN", "procurement_level": 3}),
-        ("staff_l2", {"staff_id": 6, "role": "STAFF", "procurement_level": 2}),
-        ("staff_l1", {"staff_id": 3, "role": "STAFF", "procurement_level": 1}),
+        # ADR-015: 3 business roles. staff_ids align with the AC-12 seed
+        # (DATA_MODEL.md §8) so future RBAC introspection lines up.
+        ("procurement_supervisor", {"staff_id": 1, "role": "PROCUREMENT_SUPERVISOR"}),
+        ("regular_staff",          {"staff_id": 6, "role": "REGULAR_STAFF"}),
     ],
 )
 def test_granted_persona_returns_200_and_mints_session(
@@ -104,8 +104,9 @@ def test_granted_persona_returns_200_and_mints_session(
 @pytest.mark.parametrize(
     "persona,expected_reason,expected_detail_substring",
     [
-        ("level_zero", "LEVEL_ZERO", "procurement clearance"),
-        ("not_registered", "NOT_REGISTERED", "not registered"),
+        # ADR-015: NON_STAFF replaces the old LEVEL_ZERO denial.
+        ("non_staff",      "NON_STAFF",      "portal access"),
+        ("not_registered", "NOT_REGISTERED", "identity could not be verified"),
     ],
 )
 def test_denied_persona_returns_403_with_x_auth_reason(
@@ -157,7 +158,7 @@ def test_dev_login_returns_404_when_environment_is_not_dev(dev_client):
 
     try:
         response = dev_client.post(
-            "/api/auth/dev-login", json={"persona": "admin_l3"}
+            "/api/auth/dev-login", json={"persona": "procurement_supervisor"}
         )
         assert response.status_code == 404
     finally:

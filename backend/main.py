@@ -20,7 +20,7 @@ from app.core.config import get_settings
 from app.utils.logging import get_logger
 
 app = FastAPI(
-    title="FCPS Vendor Procurement Portal API",
+    title="Staff Procurement Portal API",
     version="0.1.0-AC6",
 )
 

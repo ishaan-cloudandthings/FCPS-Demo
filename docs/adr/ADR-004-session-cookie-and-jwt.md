@@ -37,7 +37,7 @@ The JWT session implementation will use:
 |---|---|
 | Algorithm | HS256 |
 | TTL | 4 hours, configurable via `JWT_TTL_HOURS` (env) |
-| Claims | `sub=staff_id, role, procurement_level, iat, exp, iss=fcps-portal, aud=fcps-portal-web` |
+| Claims | `sub=staff_id, role, procurement_level, iat, exp, iss=spp-portal, aud=spp-portal-web` |
 | Cookie name | `session` |
 | Cookie attributes | `HttpOnly; SameSite=Lax; Path=/` |
 | `Secure` flag | env-driven (`JWT_COOKIE_SECURE`, default `false`); flips to `true` when HTTPS is enabled (see ADR-008) |

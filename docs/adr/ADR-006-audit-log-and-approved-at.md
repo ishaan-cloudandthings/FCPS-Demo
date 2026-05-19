@@ -20,7 +20,7 @@ The 2026-05-09 call made two explicit data-model decisions that
 requirements:
 
 1. **`AUDIT_LOG` table.** REQUIREMENTS.md FR-13 obliges the system to record
-   every read of a vendor's `BANK_DETAILS`. The FCPS Procurement Coordinator's
+   every read of a vendor's `BANK_DETAILS`. The Procurement Coordinator's
    quote on the call was: *"If anyone asks who's been looking at that data, we
    have a record."* The audit row stores **who** (`STAFF_ID`), **what**
    (`VENDOR_ID`), and **when** (`ACCESSED_AT`) — never the `BANK_DETAILS` value
@@ -54,7 +54,7 @@ Indexes:
 Constraints: none beyond the FKs.
 
 **Retention:** indefinite for the demo (REQUIREMENTS.md NFR-10). No purge job
-exists. Phase 2 will revisit with FCPS data governance.
+exists. Phase 2 will revisit with data governance.
 
 **Confidentiality:** `BANK_DETAILS` is **never** written to `AUDIT_LOG` or to
 application logs. The logger formatter strips any key matching `bank|secret|password`

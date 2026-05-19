@@ -38,7 +38,7 @@ const TIMEOUT_MS = 10_000;
 
 export function VerificationCallback() {
   useEffect(() => {
-    document.title = "Verifying… | FCPS Procurement";
+    document.title = "Verifying… | Staff Procurement";
   }, []);
 
   const [params] = useSearchParams();
@@ -84,7 +84,7 @@ export function VerificationCallback() {
         if (err instanceof ApiError) {
           if (err.status === 403) {
             // AC14-D7 — pass X-Auth-Reason via route state so AccessDenied
-            // can pick the right copy variant (LEVEL_ZERO vs NOT_REGISTERED).
+            // can pick the right copy variant (NON_STAFF vs NOT_REGISTERED).
             const reason = err.headers?.get?.("X-Auth-Reason") ?? null;
             navigate("/access-denied", {
               replace: true,
@@ -161,7 +161,7 @@ function VerifyingCard() {
         Verifying your identity…
       </h1>
       <p className="text-[0.9375rem] leading-relaxed text-ink-muted">
-        Just a moment while we check your FCPS procurement access.
+        Just a moment while we check your staff procurement access.
       </p>
       <div
         aria-hidden="true"

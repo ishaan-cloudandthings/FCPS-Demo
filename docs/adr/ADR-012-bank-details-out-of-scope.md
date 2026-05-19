@@ -11,7 +11,7 @@
 ## Context
 
 Through the 2026-04-28 / 2026-05-05 / 2026-05-09 discovery calls and the
-2026-05-14 interview, the rationale for the FCPS Vendor Procurement Portal
+2026-05-14 interview, the rationale for the Staff Procurement Portal
 demo centred partly on **protecting `BANK_DETAILS`** — the sensitive
 financial field on `PROCUREMENT_ITEMS`. That single field drove a chain of
 downstream requirements:
@@ -84,7 +84,7 @@ the demo we leave the DATA_MODEL.md spec untouched.
   (c) row drill-in to the detail view. The "ADMIN sees the sensitive
   financial field" framing disappears.
 - Phase 2 will need to re-introduce both bank-detail handling AND
-  audit-logging together if FCPS wants the original posture back. This ADR
+  audit-logging together if Staff Procurement Portal wants the original posture back. This ADR
   is the explicit reference point for that future work.
 
 **Follow-ups required**

@@ -52,7 +52,6 @@ afterEach(() => {
   useAuthStore.setState({
     status: "loading",
     role: null,
-    procurement_level: null,
     staff_id: null,
   });
 });

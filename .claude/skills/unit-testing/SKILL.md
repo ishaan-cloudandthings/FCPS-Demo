@@ -3,7 +3,7 @@ name: unit-testing
 description: Write unit tests that map 1:1 with a story's acceptance criteria. Pytest + httpx for backend (FastAPI/oracledb), Jest + React Testing Library for frontend. Used by the Developer agent after writing the implementation.
 ---
 
-# Skill: Unit Testing — FCPS Procurement Portal
+# Skill: Unit Testing — Staff Procurement Portal
 
 ## When to use this
 

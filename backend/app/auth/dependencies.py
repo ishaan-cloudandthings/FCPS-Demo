@@ -3,20 +3,22 @@
 
 Ratified decisions live in:
     docs/decision-log/AC-8-jwt.md  (AC8-D7, AC8-D8, AC8-D9)
+    docs/adr/ADR-015-role-model-simplification.md  ← `require_level` dropped
 
-Three Depends factories cover the entire session-based auth surface:
+Two Depends factories cover the entire session-based auth surface:
 
 * `require_authenticated`  — reads the `session` cookie, verifies the JWT,
   returns `SessionClaims`. AC8-D8: ANY failure (missing cookie / malformed
   / expired / bad-sig / bad-alg / bad-iss / bad-aud / missing-claims)
   collapses to the same 401 + body. No enumeration of which check failed.
 
-* `require_role(allowed)` — composes on top of `require_authenticated`.
+* `require_role(*allowed)` — composes on top of `require_authenticated`.
   AC8-D9: 403 + `X-Auth-Reason: ROLE_FORBIDDEN` + the standard "no
   permission" body. Matches FUNCTIONAL_DESIGN.md §10 error model.
 
-* `require_level(min_level)` — composes on top of `require_authenticated`.
-  Same 403 contract as `require_role` (AC8-D9).
+Per [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md),
+the previous `require_level(min_level)` factory has been removed along
+with `PROCUREMENT_LEVEL`; role is the single authority axis.
 """
 from __future__ import annotations
 
@@ -25,7 +27,6 @@ from typing import Iterable
 from fastapi import Cookie, Depends, HTTPException, status
 
 from app.auth.jwt_session import (
-    COOKIE_NAME,
     SessionClaims,
     SessionInvalid,
     SessionRole,
@@ -71,10 +72,12 @@ def require_authenticated(
 def require_role(*allowed: SessionRole):
     """Dependency factory: only sessions with role in `allowed` may pass.
 
-    Usage:
-        @router.get(..., dependencies=[Depends(require_role("ADMIN"))])
-        # or:
-        def endpoint(claims = Depends(require_role("ADMIN", "STAFF"))): ...
+    Usage (per [ADR-015](../../../docs/adr/ADR-015-role-model-simplification.md)):
+        @router.get(..., dependencies=[Depends(require_role("PROCUREMENT_SUPERVISOR"))])
+        # or, allowing either granted role:
+        def endpoint(claims = Depends(
+            require_role("PROCUREMENT_SUPERVISOR", "REGULAR_STAFF")
+        )): ...
 
     AC8-D9: 403 + X-Auth-Reason: ROLE_FORBIDDEN on mismatch.
     """
@@ -100,36 +103,7 @@ def require_role(*allowed: SessionRole):
     return _checker
 
 
-def require_level(min_level: int):
-    """Dependency factory: only sessions with `procurement_level >= min_level` pass.
-
-    AC8-D9: 403 + X-Auth-Reason: ROLE_FORBIDDEN on mismatch (same envelope
-    as `require_role` — clients treat both as "forbidden", server logs
-    distinguish).
-    """
-
-    def _checker(
-        claims: SessionClaims = Depends(require_authenticated),
-    ) -> SessionClaims:
-        if claims.procurement_level < min_level:
-            logger.info(
-                "auth.level.forbidden staff_id=%s level=%s required=%s",
-                claims.staff_id,
-                claims.procurement_level,
-                min_level,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=_DETAIL_FORBIDDEN,
-                headers=_HEADER_ROLE_FORBIDDEN,
-            )
-        return claims
-
-    return _checker
-
-
 __all__: Iterable[str] = (
     "require_authenticated",
     "require_role",
-    "require_level",
 )

@@ -16,7 +16,7 @@ picks up where you left off without repeating the full onboarding.
 ---
 
 You are a full stack developer resuming work on a user story mid-session for the
-FCPS Procurement Portal. Before continuing, read the following files to re-establish
+Staff Procurement Portal. Before continuing, read the following files to re-establish
 project context:
 
 1. `AI_CONTEXT.md` — tech stack, folder structure, naming conventions, patterns,

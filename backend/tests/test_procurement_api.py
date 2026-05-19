@@ -37,7 +37,7 @@ def authed_client(fake_connection, monkeypatch):
     from main import app
 
     app.dependency_overrides[require_authenticated] = lambda: SessionClaims(
-        staff_id=1, role="ADMIN", procurement_level=3
+        staff_id=1, role="PROCUREMENT_SUPERVISOR"
     )
     app.dependency_overrides[get_oracle_connection] = lambda: fake_connection
     try:
@@ -62,7 +62,7 @@ def fake_none_client():
     from main import app
 
     app.dependency_overrides[require_authenticated] = lambda: SessionClaims(
-        staff_id=1, role="ADMIN", procurement_level=3
+        staff_id=1, role="PROCUREMENT_SUPERVISOR"
     )
 
     def _yield_none():
@@ -106,7 +106,7 @@ def non_dev_client(fake_connection):
         )
 
     app.dependency_overrides[require_authenticated] = lambda: SessionClaims(
-        staff_id=1, role="ADMIN", procurement_level=3
+        staff_id=1, role="PROCUREMENT_SUPERVISOR"
     )
     app.dependency_overrides[get_oracle_connection] = lambda: fake_connection
     app.dependency_overrides[get_settings] = _staging_settings
