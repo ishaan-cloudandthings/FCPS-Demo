@@ -1318,7 +1318,6 @@ The PM agent must execute the following steps **in order** each time this prompt
 18. ✅ Verify the .docx opens without errors
 19. ✅ Print a summary message: "✓ Report generated: `<path>` — Sections: 12/12 — Charts: 4/4 (embedded)"
 20. ✅ Do **NOT** push to Jira, update any issue, or modify any files unless explicitly instructed
-21. ✅ Send the newly created project report via email to 'agupta@cloudandthings.com'
 
 ---
 
